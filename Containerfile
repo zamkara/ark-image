@@ -20,9 +20,12 @@ RUN KERNEL="linux"; \
     pacman -Syu --noconfirm && \
     pacman -S --noconfirm \
     base $KERNEL linux-firmware networkmanager mkinitcpio zram-generator \
-    gnome-shell gnome-control-center gnome-disk-utility gnome-keyring gnome-session gnome-settings-daemon gnome-text-editor nautilus xdg-desktop-portal-gnome xdg-user-dirs-gtk gnome-backgrounds gnome-console gnome-initial-setup gdm plymouth \
-    util-linux openssl grub efibootmgr dosfstools e2fsprogs xfsprogs ostree skopeo btrfs-progs podman composefs distrobox ibus iso-codes && \
+    gnome-shell gnome-control-center gnome-disk-utility gnome-keyring gnome-session gnome-settings-daemon gnome-text-editor nautilus xdg-desktop-portal-gnome xdg-user-dirs-gtk gnome-backgrounds gnome-console gnome-initial-setup gdm plymouth gnome-software flatpak \
+    util-linux openssl grub efibootmgr dosfstools e2fsprogs xfsprogs ostree skopeo btrfs-progs podman composefs distrobox ibus iso-codes shadow sudo && \
     mkdir -p /sysroot /ostree && \
+    ln -s /sysroot/ostree/repo /ostree/repo && \
+    ln -s /sysroot/ostree/deploy /ostree/deploy && \
+    chmod u+s /usr/bin/newuidmap /usr/bin/newgidmap && \
     mkdir -p /etc/ostree && echo '[sysroot]' > /etc/ostree/prepare-root.conf && \
     sed -i '/d \/run\/ostree/d' /usr/lib/tmpfiles.d/ostree-tmpfiles.conf && \
     if [[ "$VARIANT" == *"-nvidia" ]]; then \
@@ -63,9 +66,13 @@ RUN echo "[Desktop Entry]" > /usr/share/applications/alga-updater.desktop && \
     echo "Categories=System;Settings;" >> /usr/share/applications/alga-updater.desktop
 
 # Hide bloatware from GNOME Menu
-RUN for app in rygel rygel-preferences org.freedesktop.IBus.Setup org.freedesktop.IBus.Panel.Emojier org.freedesktop.IBus.Panel.Extension.Gtk3 org.freedesktop.IBus.Panel.Wayland.Gtk3 orca org.gnome.ColorProfileViewer org.gnome.Tecla htop vim cups org.freedesktop.MalcontentControl org.gnome.Extensions; do \
-        if [ -f "/usr/share/applications/$app.desktop" ]; then \
-            echo "NoDisplay=true" >> "/usr/share/applications/$app.desktop"; \
+RUN for app in rygel rygel-preferences org.freedesktop.IBus.Setup org.freedesktop.IBus.Panel.Emojier org.freedesktop.IBus.Panel.Extension.Gtk3 org.freedesktop.IBus.Panel.Wayland.Gtk3 orca org.gnome.ColorProfileViewer org.gnome.Tecla htop vim cups org.freedesktop.MalcontentControl org.gnome.Extensions /usr/share/applications/avahi-*.desktop /usr/share/applications/lstopo.desktop /usr/share/applications/qv4l2.desktop /usr/share/applications/nvidia-settings.desktop /usr/share/applications/bssh.desktop /usr/share/applications/bvnc.desktop /usr/share/applications/qvidcap.desktop; do \
+        if [ -f "/usr/share/applications/$app.desktop" ] || [ -f "$app" ]; then \
+            if [ -f "/usr/share/applications/$app.desktop" ]; then \
+                echo "NoDisplay=true" >> "/usr/share/applications/$app.desktop"; \
+            else \
+                echo "NoDisplay=true" >> "$app"; \
+            fi; \
         fi; \
     done
 
