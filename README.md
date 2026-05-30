@@ -1,8 +1,8 @@
 # Ark OS Image 📦
 
-This repository contains the `Containerfile` and build logic for **Ark OS**, an immutable, container-native Linux operating system based on Arch Linux. 
+This repository contains the `Containerfile` and build logic for **Ark OS**.
 
-Ark OS leverages `bootc` and OSTree to provide reliable, atomic updates. By using OCI containers as the base system, every installation is perfectly reproducible and can be updated seamlessly via standard container image pulls.
+**Ark OS is NOT a separate distribution.** It is simply vanilla Arch Linux delivered as a modern, immutable, container-native operating system. It leverages `bootc` and OSTree to provide reliable, atomic updates. By using OCI containers as the base system, every installation is perfectly reproducible and can be updated seamlessly via standard container image pulls.
 
 ## Structure
 - **Containerfile**: The recipe for the OS. It uses `archlinux:latest` as a base, installs all the necessary packages (including GNOME, Flatpak, network manager, and kernel), and sets up the OSTree bindings.
