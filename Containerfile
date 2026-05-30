@@ -104,7 +104,8 @@ RUN echo 'if [[ $- == *i* ]] && [ -z "$CONTAINER_ID" ]; then' > /etc/profile.d/9
     echo 'source /etc/profile.d/99-arch-distrobox.sh' >> /etc/bash.bashrc
 
 # Enable critical system services
-RUN systemctl enable gdm NetworkManager
+RUN systemctl enable gdm NetworkManager && \
+    systemctl mask systemd-firstboot.service
 
 # Ensure bootupd is executable and accessible from common paths
 RUN chmod +x /usr/libexec/bootupd /usr/bin/bootupctl && \
