@@ -22,6 +22,7 @@ RUN KERNEL="linux"; \
     base $KERNEL linux-firmware networkmanager mkinitcpio zram-generator \
     gnome-shell gnome-control-center gnome-disk-utility gnome-keyring gnome-session gnome-settings-daemon gnome-text-editor nautilus xdg-desktop-portal-gnome xdg-user-dirs-gtk gnome-backgrounds gnome-console gnome-initial-setup gdm plymouth \
     util-linux openssl grub efibootmgr dosfstools e2fsprogs xfsprogs ostree skopeo btrfs-progs podman composefs distrobox && \
+    mkdir -p /sysroot /ostree && \
     mkdir -p /etc/ostree && echo '[sysroot]' > /etc/ostree/prepare-root.conf && \
     sed -i '/d \/run\/ostree/d' /usr/lib/tmpfiles.d/ostree-tmpfiles.conf && \
     if [[ "$VARIANT" == *"-nvidia" ]]; then \
