@@ -26,6 +26,14 @@ RUN KERNEL="linux"; \
     ln -s /sysroot/ostree/repo /ostree/repo && \
     ln -s /sysroot/ostree/deploy /ostree/deploy && \
     chmod u+s /usr/bin/newuidmap /usr/bin/newgidmap && \
+    git clone https://github.com/somepaulo/MoreWaita.git /tmp/MoreWaita && \
+    mkdir -p /usr/share/icons/MoreWaita && \
+    cp -r /tmp/MoreWaita/* /usr/share/icons/MoreWaita/ && \
+    rm -rf /tmp/MoreWaita && \
+    gtk-update-icon-cache -q -t -f /usr/share/icons/MoreWaita && \
+    mkdir -p /usr/share/glib-2.0/schemas && \
+    echo -e "[org.gnome.desktop.interface]\nicon-theme='MoreWaita'" > /usr/share/glib-2.0/schemas/99-ark-theme.gschema.override && \
+    glib-compile-schemas /usr/share/glib-2.0/schemas && \
     mkdir -p /etc/ostree && echo '[sysroot]' > /etc/ostree/prepare-root.conf && \
     sed -i '/d \/run\/ostree/d' /usr/lib/tmpfiles.d/ostree-tmpfiles.conf && \
     if [[ "$VARIANT" == *"-nvidia" ]]; then \
