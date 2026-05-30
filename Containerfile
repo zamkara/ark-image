@@ -21,7 +21,7 @@ RUN KERNEL="linux"; \
     pacman -S --noconfirm \
     base $KERNEL linux-firmware networkmanager mkinitcpio zram-generator \
     gnome-shell gnome-control-center gnome-disk-utility gnome-keyring gnome-session gnome-settings-daemon gnome-text-editor nautilus xdg-desktop-portal-gnome xdg-user-dirs-gtk gnome-backgrounds gnome-console gnome-initial-setup gdm plymouth gnome-software flatpak \
-    util-linux openssl grub efibootmgr dosfstools e2fsprogs xfsprogs ostree skopeo btrfs-progs podman composefs distrobox ibus iso-codes shadow sudo && \
+    util-linux openssl grub efibootmgr dosfstools e2fsprogs xfsprogs ostree skopeo btrfs-progs podman composefs distrobox ibus iso-codes shadow sudo git && \
     mkdir -p /sysroot /ostree && \
     ln -s /sysroot/ostree/repo /ostree/repo && \
     ln -s /sysroot/ostree/deploy /ostree/deploy && \
