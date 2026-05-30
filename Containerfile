@@ -39,6 +39,8 @@ RUN KERNEL="linux"; \
 RUN sed -i 's/^MODULES=.*/MODULES=(btrfs vfat ext4 xfs erofs overlay loop)/g' /etc/mkinitcpio.conf && \
     sed -i 's/^HOOKS=.*/HOOKS=(base systemd microcode modconf kms keyboard sd-vconsole block plymouth ostree filesystems fsck)/g' /etc/mkinitcpio.conf && \
     mkdir -p /etc/plymouth && echo -e "[Daemon]\nTheme=bgrt" > /etc/plymouth/plymouthd.conf && \
+    mkdir -p /etc/systemd/system/emergency.service.d && \
+    echo -e "[Service]\nEnvironment=SYSTEMD_SULOGIN_FORCE=1" > /etc/systemd/system/emergency.service.d/override.conf && \
     mkinitcpio -P && \
     KVER=$(ls -1 /usr/lib/modules | grep -v 'extramodules' | head -n 1) && \
     IMG=$(ls -1 /boot/initramfs-*.img | grep -v 'fallback' | head -n 1) && \
