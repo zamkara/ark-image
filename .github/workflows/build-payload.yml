@@ -37,12 +37,10 @@ jobs:
           cd aur-packages
           curl -sL https://github.com/zamkara/ark-aur/releases/expanded_assets/latest | grep -o 'href="[^"]*\.pkg\.tar\.zst"' | cut -d'"' -f2 | sed 's|^|https://github.com|' | wget -qi - || true
           cd ..
-      - name: Download Alga Binary
+      - name: Download Alga Package
         run: |
-          mkdir -p alga-binary
-          cd alga-binary
-          wget -q https://github.com/zamkara/alga/releases/download/latest/alga
-          chmod +x alga
+          cd aur-packages
+          curl -sL https://github.com/zamkara/alga/releases/expanded_assets/latest | grep -o 'href="[^"]*\.pkg\.tar\.zst"' | cut -d'"' -f2 | sed 's|^|https://github.com|' | wget -qi - || true
           cd ..
       - name: Cache Pacman Payload
         uses: actions/cache@v4
