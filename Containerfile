@@ -12,13 +12,14 @@ COPY aur-packages/*.pkg.tar.zst /tmp/
 
 # Determine kernel based on variant
 RUN set -e; \
+    sed -i '/NoExtract/d' /etc/pacman.conf; \
     KERNEL="linux"; \
     if [[ "$VARIANT" == *"-zen"* ]]; then KERNEL="linux-zen"; fi; \
     if [[ "$VARIANT" == *"-lts"* ]]; then KERNEL="linux-lts"; fi; \
     if [[ "$VARIANT" == *"-hardened"* ]]; then KERNEL="linux-hardened"; fi; \
     pacman -Syu --noconfirm; \
     pacman -S --noconfirm \
-    base $KERNEL linux-firmware networkmanager mkinitcpio zram-generator \
+    base glibc $KERNEL linux-firmware networkmanager mkinitcpio zram-generator \
     gnome-shell gnome-control-center gnome-disk-utility gnome-keyring gnome-session gnome-settings-daemon nautilus xdg-desktop-portal-gnome xdg-user-dirs-gtk gnome-backgrounds ptyxis gdm plymouth gnome-software flatpak gnome-initial-setup \
     util-linux openssl efibootmgr dosfstools e2fsprogs xfsprogs ostree skopeo btrfs-progs podman composefs distrobox ibus iso-codes shadow sudo git; \
     if [[ "$VARIANT" == *"-nvidia" ]]; then \
@@ -29,8 +30,6 @@ RUN set -e; \
         fi; \
     fi; \
     pacman -U --noconfirm /tmp/*.pkg.tar.zst; \
-    sed -i 's/^#\(en_US.UTF-8 UTF-8\)/\1/' /etc/locale.gen; \
-    locale-gen; \
     echo "LANG=en_US.UTF-8" > /etc/locale.conf; \
     ln -sf /usr/share/zoneinfo/UTC /etc/localtime; \
     chmod u+s /usr/bin/newuidmap /usr/bin/newgidmap; \
