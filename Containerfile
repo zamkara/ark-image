@@ -31,6 +31,7 @@ RUN KERNEL="linux"; \
     fi && \
     pacman -U --noconfirm /tmp/*.pkg.tar.zst && \
     sed -i 's/^#\(.*UTF-8.*\)/\1/' /etc/locale.gen && \
+    sed -i '/@/s/^/#/' /etc/locale.gen && \
     locale-gen && \
     echo "LANG=en_US.UTF-8" > /etc/locale.conf && \
     rm -f /tmp/*.pkg.tar.zst && \
