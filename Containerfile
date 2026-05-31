@@ -34,6 +34,7 @@ RUN KERNEL="linux"; \
     locale-gen && \
     echo "LANG=en_US.UTF-8" > /etc/locale.conf && \
     rm -f /tmp/*.pkg.tar.zst && \
+    rm -f /usr/share/applications/{bssh,bvnc,avahi-discover,qv4l2,qvidcap,stoken-gui,stoken-gui-small,org.gnome.Extensions,lstopo}.desktop || true && \
     pacman -Scc --noconfirm
 
 # Enable plymouth and ostree in mkinitcpio
