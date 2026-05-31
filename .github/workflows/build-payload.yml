@@ -36,6 +36,11 @@ jobs:
           mkdir -p aur-packages
           cd aur-packages
           curl -sL https://github.com/zamkara/ark-aur/releases/expanded_assets/latest | grep -o 'href="[^"]*\.pkg\.tar\.zst"' | cut -d'"' -f2 | sed 's|^|https://github.com|' | wget -qi - || true
+          cd ..
+      - name: Download Alga Package
+        run: |
+          cd aur-packages
+          curl -sL https://github.com/zamkara/alga/releases/expanded_assets/latest | grep -o 'href="[^"]*\.pkg\.tar\.zst"' | cut -d'"' -f2 | sed 's|^|https://github.com|' | wget -qi - || true
           # Deduplicate: for each pkgname keep only the highest pkgrel
           # Package filename format: pkgname-pkgver-pkgrel-arch.pkg.tar.zst
           python3 - <<'PYEOF'
@@ -61,11 +66,6 @@ jobs:
           PYEOF
           echo "Final packages in dir:"
           ls -lh
-          cd ..
-      - name: Download Alga Package
-        run: |
-          cd aur-packages
-          curl -sL https://github.com/zamkara/alga/releases/expanded_assets/latest | grep -o 'href="[^"]*\.pkg\.tar\.zst"' | cut -d'"' -f2 | sed 's|^|https://github.com|' | wget -qi - || true
           cd ..
       - name: Download Prebuilt Pacman Cache
         run: |
