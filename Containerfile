@@ -29,8 +29,7 @@ RUN set -e; \
         fi; \
     fi; \
     pacman -U --noconfirm /tmp/*.pkg.tar.zst; \
-    sed -i 's/^#\(.*UTF-8.*\)/\1/' /etc/locale.gen; \
-    sed -i '/@/s/^/#/' /etc/locale.gen; \
+    sed -i 's/^#\(en_US.UTF-8 UTF-8\)/\1/' /etc/locale.gen; \
     locale-gen; \
     echo "LANG=en_US.UTF-8" > /etc/locale.conf; \
     ln -sf /usr/share/zoneinfo/UTC /etc/localtime; \
