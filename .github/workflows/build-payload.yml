@@ -36,6 +36,31 @@ jobs:
           mkdir -p aur-packages
           cd aur-packages
           curl -sL https://github.com/zamkara/ark-aur/releases/expanded_assets/latest | grep -o 'href="[^"]*\.pkg\.tar\.zst"' | cut -d'"' -f2 | sed 's|^|https://github.com|' | wget -qi - || true
+          # Deduplicate: for each pkgname keep only the highest pkgrel
+          # Package filename format: pkgname-pkgver-pkgrel-arch.pkg.tar.zst
+          python3 - <<'PYEOF'
+          import os, re
+          pkgs = [f for f in os.listdir('.') if f.endswith('.pkg.tar.zst')]
+          best = {}
+          for f in pkgs:
+              # strip arch.pkg.tar.zst then pkgrel then pkgver to get pkgname
+              m = re.match(r'^(.+)-([^-]+)-([^-]+)-([^-]+)\.pkg\.tar\.zst$', f)
+              if not m:
+                  continue
+              name, ver, rel, arch = m.group(1), m.group(2), m.group(3), m.group(4)
+              key = name
+              cur_ver = best.get(key)
+              if cur_ver is None or (int(rel) > int(re.match(r'^(.+)-([^-]+)-([^-]+)-([^-]+)\.pkg\.tar\.zst$', cur_ver).group(3))):
+                  best[key] = f
+          keep = set(best.values())
+          for f in pkgs:
+              if f not in keep:
+                  print(f"Removing older duplicate: {f}")
+                  os.remove(f)
+          print("Final packages:", sorted(keep))
+          PYEOF
+          echo "Final packages in dir:"
+          ls -lh
           cd ..
       - name: Download Alga Package
         run: |
