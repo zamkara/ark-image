@@ -20,9 +20,8 @@ RUN KERNEL="linux"; \
     base $KERNEL linux-firmware networkmanager mkinitcpio zram-generator \
     gnome-shell gnome-control-center gnome-disk-utility gnome-keyring gnome-session gnome-settings-daemon nautilus xdg-desktop-portal-gnome xdg-user-dirs-gtk gnome-backgrounds ptyxis gnome-initial-setup gdm plymouth gnome-software flatpak \
     util-linux openssl grub efibootmgr dosfstools e2fsprogs xfsprogs ostree skopeo btrfs-progs podman composefs distrobox ibus iso-codes shadow sudo git && \
-    mkdir -p /sysroot /ostree && \
-    ln -s /sysroot/ostree/repo /ostree/repo && \
-    ln -s /sysroot/ostree/deploy /ostree/deploy && \
+    mkdir -p /sysroot && \
+    ln -s sysroot/ostree /ostree && \
     chmod u+s /usr/bin/newuidmap /usr/bin/newgidmap && \
     if [[ "$VARIANT" == *"-nvidia" ]]; then \
         if [ "$KERNEL" = "linux" ]; then \
