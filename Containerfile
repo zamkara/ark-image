@@ -49,7 +49,8 @@ RUN sed -i 's/^MODULES=.*/MODULES=(btrfs vfat ext4 xfs erofs overlay loop)/g' /e
 
 # Enable critical system services
 RUN systemctl enable gdm NetworkManager && \
-    systemctl mask systemd-firstboot.service
+    systemctl mask systemd-firstboot.service && \
+    mkdir -p /etc/ostree && printf "[sysroot]\ncomposefs=false\n" > /etc/ostree/prepare-root.conf
 
 # Ensure bootupd is executable
 RUN chmod +x /usr/libexec/bootupd /usr/bin/bootupctl
