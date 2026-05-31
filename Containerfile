@@ -18,13 +18,13 @@ RUN KERNEL="linux"; \
     pacman -Syu --noconfirm && \
     pacman -S --noconfirm \
     base $KERNEL linux-firmware networkmanager mkinitcpio zram-generator \
-    gnome-shell gnome-control-center gnome-disk-utility gnome-keyring gnome-session gnome-settings-daemon nautilus xdg-desktop-portal-gnome xdg-user-dirs-gtk gnome-backgrounds ptyxis gdm plymouth gnome-software flatpak \
+    gnome-shell gnome-control-center gnome-disk-utility gnome-keyring gnome-session gnome-settings-daemon nautilus xdg-desktop-portal-gnome xdg-user-dirs-gtk gnome-backgrounds ptyxis gdm plymouth gnome-software flatpak gnome-initial-setup langtable \
     util-linux openssl efibootmgr dosfstools e2fsprogs xfsprogs ostree skopeo btrfs-progs podman composefs distrobox ibus iso-codes shadow sudo git && \
     if [[ "$VARIANT" == *"-nvidia" ]]; then \
         if [ "$KERNEL" = "linux" ]; then \
-            pacman -S --noconfirm nvidia-open nvidia-utils; \
+            pacman -S --noconfirm nvidia-open nvidia-utils nvidia-settings; \
         else \
-            pacman -S --noconfirm nvidia-open-dkms ${KERNEL}-headers dkms nvidia-utils; \
+            pacman -S --noconfirm nvidia-open-dkms ${KERNEL}-headers dkms nvidia-utils nvidia-settings; \
         fi \
     fi && \
     pacman -U --noconfirm /tmp/*.pkg.tar.zst && \
@@ -35,7 +35,8 @@ RUN KERNEL="linux"; \
     ln -sf /usr/share/zoneinfo/UTC /etc/localtime && \
     chmod u+s /usr/bin/newuidmap /usr/bin/newgidmap && \
     rm -f /tmp/*.pkg.tar.zst && \
-    rm -f /usr/share/applications/{bssh,bvnc,avahi-discover,qv4l2,qvidcap,stoken-gui,stoken-gui-small,org.gnome.Extensions,org.gnome.TextEditor,lstopo,hwloc-ls,org.gnome.DiskUtility,org.gnome.baobab,org.gnome.Logs}.desktop 2>/dev/null || true && \
+    rm -f /usr/share/applications/{bssh,bvnc,avahi-discover,qv4l2,qvidcap,stoken-gui,stoken-gui-small,org.gnome.Extensions,org.gnome.TextEditor,lstopo,hwloc-ls,org.gnome.Logs,org.gnome.Console,ibus,ibus-setup,ibus-wayland}.desktop 2>/dev/null || true && \
+    sed -i 's/^Name=.*/Name=Terminal/' /usr/share/applications/org.gnome.Ptyxis.desktop 2>/dev/null || true && \
     pacman -Scc --noconfirm
 
 # Enable plymouth and ostree in mkinitcpio
@@ -49,7 +50,7 @@ RUN sed -i 's/^MODULES=.*/MODULES=(btrfs vfat ext4 xfs erofs overlay loop)/g' /e
 
 # Enable critical system services and setup ostree sysroot structure
 RUN systemctl enable gdm NetworkManager && \
-    systemctl mask systemd-firstboot.service gnome-initial-setup.service && \
+    systemctl mask systemd-firstboot.service && \
     mkdir -p /etc/ostree && \
     printf "[sysroot]\ncomposefs=false\n" > /etc/ostree/prepare-root.conf && \
     mkdir -p /sysroot && \
