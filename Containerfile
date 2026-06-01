@@ -41,7 +41,10 @@ RUN set -e; \
     pacman -Scc --noconfirm
 
 # Pre-pull archlinux container for instant distrobox readiness on first boot
-RUN podman pull docker.io/archlinux:latest && \
+# Note: use VFS storage driver because CI runs inside a container where overlayfs is nested
+RUN mkdir -p /etc/containers && \
+    printf '[storage]\ndriver = "vfs"\n' > /etc/containers/storage.conf && \
+    podman pull docker.io/archlinux:latest && \
     mkdir -p /usr/share/ark-distrobox && \
     podman save --format oci-archive docker.io/archlinux:latest \
       -o /usr/share/ark-distrobox/arch-container.tar && \
