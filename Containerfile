@@ -20,7 +20,7 @@ RUN set -e; \
     pacman -Syu --noconfirm; \
     pacman -S --noconfirm \
     base glibc $KERNEL linux-firmware networkmanager mkinitcpio zram-generator \
-    gnome-shell gnome-control-center gnome-disk-utility gnome-keyring gnome-session gnome-settings-daemon nautilus xdg-desktop-portal-gnome xdg-user-dirs-gtk gnome-backgrounds ptyxis gdm plymouth gnome-software flatpak gnome-initial-setup \
+    gnome-shell gnome-control-center gnome-disk-utility gnome-keyring gnome-session gnome-settings-daemon nautilus xdg-desktop-portal-gnome xdg-user-dirs-gtk gnome-backgrounds gnome-console gdm plymouth gnome-software flatpak gnome-initial-setup \
     util-linux openssl efibootmgr dosfstools e2fsprogs xfsprogs ostree skopeo btrfs-progs podman composefs distrobox ibus iso-codes shadow sudo git; \
     if [[ "$VARIANT" == *"-nvidia" ]]; then \
         if [ "$KERNEL" = "linux" ]; then \
@@ -36,20 +36,15 @@ RUN set -e; \
     ln -sf /usr/share/zoneinfo/UTC /etc/localtime; \
     chmod u+s /usr/bin/newuidmap /usr/bin/newgidmap; \
     rm -f /tmp/*.pkg.tar.zst; \
-    rm -f /usr/share/applications/{bssh,bvnc,avahi-discover,qv4l2,qvidcap,stoken-gui,stoken-gui-small,org.gnome.Extensions,org.gnome.TextEditor,lstopo,hwloc-ls,org.gnome.Logs,org.gnome.Console,ibus,ibus-setup,ibus-wayland}.desktop 2>/dev/null || true; \
-    sed -i 's/^Name=.*/Name=Terminal/' /usr/share/applications/org.gnome.Ptyxis.desktop 2>/dev/null || true; \
+    rm -f /usr/share/applications/{bssh,bvnc,avahi-discover,qv4l2,qvidcap,stoken-gui,stoken-gui-small,org.gnome.Extensions,org.gnome.TextEditor,lstopo,hwloc-ls,org.gnome.Logs,ibus,ibus-setup,ibus-wayland}.desktop 2>/dev/null || true; \
+    sed -i 's/^Name=.*/Name=Terminal/' /usr/share/applications/org.gnome.Console.desktop 2>/dev/null || true; \
     pacman -Scc --noconfirm
 
 # Pre-pull archlinux container for instant distrobox readiness on first boot
 # Note: use VFS storage driver because CI runs inside a container where overlayfs is nested
 RUN mkdir -p /etc/containers && \
     printf '[storage]\ndriver = "vfs"\n' > /etc/containers/storage.conf && \
-    podman pull docker.io/archlinux:latest && \
-    mkdir -p /usr/share/ark-distrobox && \
-    podman save --format oci-archive docker.io/archlinux:latest \
-      -o /usr/share/ark-distrobox/arch-container.tar && \
-    gzip -f /usr/share/ark-distrobox/arch-container.tar && \
-    podman rmi docker.io/archlinux:latest
+    podman pull docker.io/archlinux:latest
 
 # Enable plymouth and ostree in mkinitcpio
 RUN sed -i 's/^MODULES=.*/MODULES=(btrfs vfat ext4 xfs erofs overlay loop)/g' /etc/mkinitcpio.conf && \
