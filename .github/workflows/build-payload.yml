@@ -81,9 +81,11 @@ jobs:
       - name: Set dynamic run name
         if: steps.decide.outputs.needs-build == 'true'
         run: |
-          gh run rename "${{ github.run_id }}" \
-            "Build - ${{ steps.decide.outputs.reason }}" \
-            --repo ${{ github.repository }}
+          curl -sS -X PATCH \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            -d "{\"name\":\"Build - ${{ steps.decide.outputs.reason }}\"}"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
