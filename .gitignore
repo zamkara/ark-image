@@ -1,0 +1,16 @@
+# Binary packages
+aur-packages/*.pkg.tar.zst
+*.pkg.tar.zst
+
+# IDE
+.vscode/
+.idea/
+*.iml
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
