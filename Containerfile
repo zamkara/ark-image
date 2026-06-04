@@ -37,7 +37,6 @@ RUN set -e; \
     chmod u+s /usr/bin/newuidmap /usr/bin/newgidmap; \
     rm -f /tmp/*.pkg.tar.zst; \
     rm -f /usr/share/applications/{bssh,bvnc,avahi-discover,qv4l2,qvidcap,stoken-gui,stoken-gui-small,org.gnome.Extensions,org.gnome.TextEditor,lstopo,hwloc-ls,org.gnome.Logs,ibus,ibus-setup,ibus-wayland}.desktop 2>/dev/null || true; \
-    sed -i 's/^Name=.*/Name=Terminal/' /usr/share/applications/org.gnome.Console.desktop 2>/dev/null || true; \
     pacman -Scc --noconfirm
 
 # Pre-pull archlinux container for instant distrobox readiness on first boot
