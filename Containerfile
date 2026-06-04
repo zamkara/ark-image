@@ -21,7 +21,7 @@ RUN set -e; \
     pacman -S --noconfirm \
     base glibc $KERNEL linux-firmware networkmanager mkinitcpio zram-generator \
     gnome-shell gnome-control-center gnome-disk-utility gnome-keyring gnome-session gnome-settings-daemon nautilus xdg-desktop-portal-gnome xdg-user-dirs-gtk gnome-backgrounds gnome-console gdm plymouth gnome-software flatpak gnome-initial-setup \
-    util-linux openssl efibootmgr dosfstools e2fsprogs xfsprogs ostree skopeo btrfs-progs podman composefs distrobox ibus iso-codes shadow sudo git; \
+    util-linux openssl efibootmgr dosfstools e2fsprogs xfsprogs ostree skopeo btrfs-progs podman composefs distrobox ibus iso-codes shadow sudo git nano; \
     if [[ "$VARIANT" == *"-nvidia" ]]; then \
         if [ "$KERNEL" = "linux" ]; then \
             pacman -S --noconfirm nvidia-open nvidia-utils nvidia-settings; \
