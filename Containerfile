@@ -79,3 +79,24 @@ RUN set -e; \
     echo "trusted-users = root @wheel" >> /etc/nix/nix.conf; \
     echo "extra-nix-path = nixpkgs=channel:nixpkgs-unstable" >> /etc/nix/nix.conf; \
     systemctl enable nix-daemon.socket nix-daemon.service
+
+# BLS sync script — runs after ostree-finalize-staged.service at shutdown
+# Generates BLS entries + copies kernel/initrd to /boot with correct deployment index
+RUN mkdir -p /usr/libexec/ark && \
+    cat > /usr/libexec/ark/bls-sync.sh <<'EOF'
+#!/bin/bash
+mount -o remount,rw /sysroot 2>/dev/null || true
+ORIG=$(ostree config --repo=/sysroot/ostree/repo get sysroot.bootloader 2>/dev/null || echo none)
+ostree config --repo=/sysroot/ostree/repo set sysroot.bootloader grub2
+ostree admin bootloader-update --sysroot=/sysroot 2>/dev/null || true
+ostree config --repo=/sysroot/ostree/repo set sysroot.bootloader "$ORIG"
+mount -o remount,ro /sysroot 2>/dev/null || true
+EOF
+    chmod +x /usr/libexec/ark/bls-sync.sh
+
+# Drop-in: run BLS sync AFTER finalization (deployment index is final)
+RUN mkdir -p /usr/lib/systemd/system/ostree-finalize-staged.service.d && \
+    cat > /usr/lib/systemd/system/ostree-finalize-staged.service.d/bls-sync.conf <<'EOF'
+[Service]
+ExecStartPost=/usr/libexec/ark/bls-sync.sh
+EOF
