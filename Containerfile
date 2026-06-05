@@ -80,6 +80,34 @@ RUN set -e; \
     echo "extra-nix-path = nixpkgs=channel:nixpkgs-unstable" >> /etc/nix/nix.conf; \
     systemctl enable nix-daemon.socket nix-daemon.service
 
+# Remove pacman — useless on immutable host
+RUN rm -rf \
+    /usr/bin/pacman* \
+    /usr/bin/makepkg* \
+    /usr/bin/repo-add \
+    /usr/bin/repo-elephant \
+    /usr/bin/repo-remove \
+    /usr/bin/testpkg \
+    /usr/bin/vercmp \
+    /usr/lib/libalpm.so* \
+    /usr/include/alpm* \
+    /usr/lib/pkgconfig/libalpm.pc \
+    /usr/lib/sysusers.d/alpm.conf \
+    /usr/lib/systemd/system/sockets.target.wants/dirmngr@etc-pacman.d-gnupg.socket \
+    /usr/lib/systemd/system/sockets.target.wants/gpg-agent*@etc-pacman.d-gnupg.socket \
+    /usr/lib/systemd/system/sockets.target.wants/keyboxd@etc-pacman.d-gnupg.socket \
+    /usr/share/bash-completion/completions/pacman* \
+    /usr/share/bash-completion/completions/makepkg* \
+    /usr/share/zsh/site-functions/_pacman* \
+    /usr/share/man/man8/pacman* \
+    /usr/share/man/man8/makepkg* \
+    /usr/share/man/man8/repo-* \
+    /usr/share/man/man8/vercmp* \
+    /usr/share/man/man8/testpkg* \
+    /etc/pacman.conf \
+    /etc/pacman.d/ \
+    /var/lib/pacman/
+
 # BLS sync script — runs after ostree-finalize-staged.service at shutdown
 # Generates BLS entries + copies kernel/initrd to /boot with correct deployment index
 COPY bls-sync.sh /usr/libexec/ark/bls-sync.sh
@@ -87,3 +115,7 @@ RUN chmod +x /usr/libexec/ark/bls-sync.sh
 
 # Drop-in: run BLS sync AFTER finalization (deployment index is final)
 COPY bls-sync.conf /usr/lib/systemd/system/ostree-finalize-staged.service.d/bls-sync.conf
+
+# Pacman handler — catch accidental pacman calls on immutable host
+COPY pacman.sh /usr/local/bin/pacman
+RUN chmod +x /usr/local/bin/pacman
