@@ -12,7 +12,7 @@ COPY aur-packages/*.pkg.tar.zst /tmp/
 
 # Determine kernel based on variant
 RUN set -e; \
-    sed -i '/NoExtract/d' /etc/pacman.conf; \
+    sed -i '/NoExtract/d; /^#\[multilib\]/,/^#Include/s/^#//' /etc/pacman.conf; \
     KERNEL="linux"; \
     if [[ "$VARIANT" == *"-zen"* ]]; then KERNEL="linux-zen"; fi; \
     if [[ "$VARIANT" == *"-lts"* ]]; then KERNEL="linux-lts"; fi; \
@@ -24,6 +24,7 @@ RUN set -e; \
     webp-pixbuf-loader libheif libavif libraw ffmpegthumbnailer poppler-glib libgsf \
     util-linux openssl efibootmgr dosfstools e2fsprogs xfsprogs ostree skopeo btrfs-progs podman composefs distrobox ibus iso-codes shadow sudo git nano fastfetch zsh fish starship github-cli base-devel nix scrcpy android-tools; \
     if [[ "$VARIANT" == *"-nvidia" ]]; then \
+        pacman -S --noconfirm steam lib32-nvidia-utils; \
         if [ "$KERNEL" = "linux" ]; then \
             pacman -S --noconfirm nvidia-open nvidia-utils nvidia-settings; \
         else \
