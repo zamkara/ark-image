@@ -12,7 +12,7 @@ COPY aur-packages/*.pkg.tar.zst /tmp/
 
 # Determine kernel based on variant
 RUN set -e; \
-    sed -i '/NoExtract/d; /^#\[multilib\]/,/^#Include/s/^#//' /etc/pacman.conf; \
+    sed -i '/NoExtract/d' /etc/pacman.conf && printf '\n[multilib]\nInclude = /etc/pacman.d/mirrorlist\n' >> /etc/pacman.conf; \
     KERNEL="linux"; \
     if [[ "$VARIANT" == *"-zen"* ]]; then KERNEL="linux-zen"; fi; \
     if [[ "$VARIANT" == *"-lts"* ]]; then KERNEL="linux-lts"; fi; \
