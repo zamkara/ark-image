@@ -108,13 +108,13 @@ RUN rm -rf \
     /etc/pacman.d/ \
     /var/lib/pacman/
 
-# BLS sync script — runs after ostree-finalize-staged.service at shutdown
-# Generates BLS entries + copies kernel/initrd to /boot with correct deployment index
+# BLS sync script — generates BLS entries + copies kernel/initrd to /boot per-deployment
 COPY bls-sync.sh /usr/libexec/ark/bls-sync.sh
 RUN chmod +x /usr/libexec/ark/bls-sync.sh
 
-# Drop-in: run BLS sync AFTER finalization (deployment index is final)
+# Drop-in: run BLS sync after finalization for both OSTree and bootc services
 COPY bls-sync.conf /usr/lib/systemd/system/ostree-finalize-staged.service.d/bls-sync.conf
+COPY bls-sync.conf /usr/lib/systemd/system/bootc-finalize-staged.service.d/bls-sync.conf
 
 # Pacman handler — catch accidental pacman calls on immutable host
 COPY pacman.sh /usr/local/bin/pacman
