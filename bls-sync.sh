@@ -115,6 +115,9 @@ for deploy_id in $deployments; do
     bootcsum="${deploy_id%.*}"
     bootserial="${deploy_id##*.}"
     ostree_param="ostree=/ostree/boot.0/default/${bootcsum}/${bootserial}"
+    bootlink_dir="$SYSROOT/ostree/boot.0/default/$bootcsum"
+    mkdir -p "$bootlink_dir"
+    ln -sfn "../../../deploy/default/deploy/$deploy_id" "$bootlink_dir/$bootserial"
     if [ -f "$deploy_path/etc/os-release" ]; then
         title=$(grep -oP '(?<=^PRETTY_NAME=).*' "$deploy_path/etc/os-release" 2>/dev/null | tr -d '"' || echo "Ark Linux")
     else
