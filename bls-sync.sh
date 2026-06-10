@@ -11,14 +11,16 @@ DEPLOY_BASE="$SYSROOT/ostree/deploy/default/deploy"
 [ ! -d "$OSTREE_REPO" ] && exit 0
 [ ! -d "$DEPLOY_BASE" ] && exit 0
 
-# Cari EFI System Partition
-ESP=""
-for candidate in "/boot" "/efi" "/boot/efi"; do
-    if mountpoint -q "$candidate" 2>/dev/null && df -T "$candidate" 2>/dev/null | grep -q vfat; then
-        ESP="$candidate"
-        break
-    fi
-done
+ESP="${ESP:-}"
+if [ -z "$ESP" ]; then
+    # Cari EFI System Partition
+    for candidate in "/boot" "/efi" "/boot/efi"; do
+        if mountpoint -q "$candidate" 2>/dev/null && df -T "$candidate" 2>/dev/null | grep -q vfat; then
+            ESP="$candidate"
+            break
+        fi
+    done
+fi
 if [ -z "$ESP" ]; then
     ESP_DEV=""
     if command -v blkid >/dev/null 2>&1 && blkid -L EFI-SYSTEM >/dev/null 2>&1; then
@@ -120,11 +122,8 @@ for deploy_id in $deployments; do
     bootlink_dir="$SYSROOT/ostree/boot.0/default/$bootcsum"
     mkdir -p "$bootlink_dir"
     ln -sfn "../../../deploy/default/deploy/$deploy_id" "$bootlink_dir/$bootserial"
-    if [ "$count" -eq 1 ]; then
-        title="Arch Linux - Omega"
-    else
-        title="Arch Linux - Alpha"
-    fi
+    deploy_date=$(date -r "$deploy_path" "+%Y%m%d" 2>/dev/null || date "+%Y%m%d")
+    title="Arch Linux $deploy_date"
 
     cmdline=""
     for cmdline_file in "$deploy_path/usr/lib/ostree-boot/cmdline" "$deploy_path/etc/kernel/cmdline"; do
@@ -165,6 +164,10 @@ for entry in "$ESP/loader/entries/ostree-"*.conf; do
         rm -rf "$ESP/ostree/$id" 2>/dev/null || true
     fi
 done
+
+# Hapus entry bawaan ostree/bootc agar tidak ganda
+rm -f "$ESP/loader/entries/ostree-default-"*.conf 2>/dev/null || true
+rm -f "$ESP/loader/entries/ostree-"*-default.conf 2>/dev/null || true
 
 if [ ! -f "$ESP/loader/loader.conf" ]; then
     cat > "$ESP/loader/loader.conf" <<LOADER
