@@ -19,10 +19,10 @@ RUN set -e; \
     if [[ "$VARIANT" == *"-hardened"* ]]; then KERNEL="linux-hardened"; fi; \
     pacman -Syu --noconfirm; \
     pacman -S --noconfirm \
-    base glibc $KERNEL linux-firmware networkmanager mkinitcpio zram-generator \
-    gnome-shell gnome-control-center gnome-disk-utility gnome-keyring gnome-session gnome-settings-daemon nautilus xdg-desktop-portal-gnome xdg-user-dirs-gtk gnome-backgrounds gnome-console gdm plymouth gnome-software flatpak gnome-initial-setup \
+    base glibc $KERNEL linux-firmware networkmanager mkinitcpio \
+    gnome-shell gnome-control-center gnome-disk-utility gnome-keyring gnome-session gnome-settings-daemon nautilus xdg-desktop-portal-gnome xdg-user-dirs-gtk gnome-console gdm gnome-software flatpak gnome-initial-setup \
     webp-pixbuf-loader libheif libavif libraw ffmpegthumbnailer poppler-glib libgsf \
-    util-linux openssl efibootmgr dosfstools e2fsprogs xfsprogs ostree skopeo btrfs-progs podman composefs distrobox ibus iso-codes shadow sudo git nano fastfetch zsh fish starship github-cli base-devel nix scrcpy android-tools; \
+    util-linux openssl efibootmgr dosfstools e2fsprogs xfsprogs ostree skopeo btrfs-progs podman composefs ibus iso-codes shadow sudo git nano zsh fish; \
     if [[ "$VARIANT" == *"-nvidia" ]]; then \
         pacman -S --noconfirm steam lib32-nvidia-utils; \
         if [ "$KERNEL" = "linux" ]; then \
