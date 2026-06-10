@@ -1,0 +1,7 @@
+[Unit]
+Description=Alga self-update check
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/alga --check-update

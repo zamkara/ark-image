@@ -121,3 +121,12 @@ COPY bls-sync.conf /usr/lib/systemd/system/bootc-finalize-staged.service.d/bls-s
 # Pacman handler — catch accidental pacman calls on immutable host
 COPY pacman.sh /usr/local/bin/pacman
 RUN chmod +x /usr/local/bin/pacman
+
+# Alga wrapper — prefer updated binary from /var/lib/alga/bin
+COPY alga-wrapper.sh /usr/local/bin/alga
+RUN chmod +x /usr/local/bin/alga
+
+# Alga self-update timer — checks for alga updates periodically
+COPY alga-update.service /usr/lib/systemd/system/alga-update.service
+COPY alga-update.timer /usr/lib/systemd/system/alga-update.timer
+RUN systemctl enable alga-update.timer

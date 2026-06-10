@@ -43,7 +43,7 @@ rm -f "$SYSROOT/.ark-bls-check" 2>/dev/null || true
 
 export OSTREE_SYSROOT="$OSTREE_REPO"
 
-deployments=$(ostree admin --sysroot="$SYSROOT" status 2>/dev/null | grep -oP 'ostree/deploy/default/deploy/\K[^ ]+' | sort -u || true)
+deployments=$(ostree admin --sysroot="$SYSROOT" status 2>/dev/null | grep -oP 'ostree/deploy/default/deploy/\K[^ ]+' || true)
 
 if [ -z "$deployments" ]; then
     deployments=$(ls -d "$DEPLOY_BASE"/*/ 2>/dev/null | xargs -n1 basename 2>/dev/null || true)
@@ -58,9 +58,11 @@ mkdir -p "$ESP/loader/entries" "$ESP/ostree"
 
 ROOT_UUID=$(findmnt -n -o UUID "$SYSROOT" 2>/dev/null || blkid -s UUID -o value "$(findmnt -n -o SOURCE "$SYSROOT" 2>/dev/null)" 2>/dev/null || echo "")
 
+count=0
 for deploy_id in $deployments; do
     deploy_id=$(echo "$deploy_id" | tr -d '\n\r ')
     [ -z "$deploy_id" ] && continue
+    count=$((count + 1))
 
     deploy_path="$DEPLOY_BASE/$deploy_id"
 
@@ -118,10 +120,10 @@ for deploy_id in $deployments; do
     bootlink_dir="$SYSROOT/ostree/boot.0/default/$bootcsum"
     mkdir -p "$bootlink_dir"
     ln -sfn "../../../deploy/default/deploy/$deploy_id" "$bootlink_dir/$bootserial"
-    if [ -f "$deploy_path/etc/os-release" ]; then
-        title=$(grep -oP '(?<=^PRETTY_NAME=).*' "$deploy_path/etc/os-release" 2>/dev/null | tr -d '"' || echo "Ark Linux")
+    if [ "$count" -eq 1 ]; then
+        title="Arch Linux - Omega"
     else
-        title="Ark Linux"
+        title="Arch Linux - Alpha"
     fi
 
     cmdline=""
@@ -139,7 +141,7 @@ for deploy_id in $deployments; do
     entry_file="$ESP/loader/entries/ostree-$deploy_id.conf"
     cat > "$entry_file" <<BLSENTRY
 ## This is a boot loader entry for ostree based on Ark Linux
-title $title ($(date +%Y-%m-%d %H:%M))
+title $title
 version $kver
 options $cmdline
 linux /ostree/$deploy_id/vmlinuz-$kver
