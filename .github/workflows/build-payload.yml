@@ -189,7 +189,14 @@ jobs:
       - name: Download Alga Package
         run: |
           cd aur-packages
-          curl -sL https://github.com/zamkara/alga/releases/expanded_assets/latest | grep -o 'href="[^"]*\.pkg\.tar\.zst"' | cut -d'"' -f2 | sed 's|^|https://github.com|' | wget -qi - || true
+          ALGA_URL=$(curl -s "https://api.github.com/repos/zamkara/alga/releases/latest" | grep -oP '"browser_download_url":\s*"\K[^"]+' | grep -v 'debug')
+          if [ -n "$ALGA_URL" ]; then
+            echo "Downloading Alga Package: $ALGA_URL"
+            wget -q "$ALGA_URL"
+          else
+            echo "Failed to get latest Alga release URL"
+            exit 1
+          fi
           python3 - <<'PYEOF'
           import os, re
           pkgs = [f for f in os.listdir('.') if f.endswith('.pkg.tar.zst')]
