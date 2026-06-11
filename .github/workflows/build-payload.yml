@@ -184,15 +184,7 @@ jobs:
         run: |
           mkdir -p aur-packages
           cd aur-packages
-          python3 -c '
-import urllib.request, json
-req = urllib.request.Request("https://api.github.com/repos/zamkara/ark-aur/releases", headers={"User-Agent": "Antigravity"})
-with urllib.request.urlopen(req) as response:
-    data = json.loads(response.read().decode())
-    for asset in data[0].get("assets", []):
-        if asset["name"].endswith(".pkg.tar.zst") or asset["name"].endswith(".pkg.tar.xz"):
-            print(asset["browser_download_url"])
-' | wget -qi -
+          python3 -c 'import urllib.request, json; req = urllib.request.Request("https://api.github.com/repos/zamkara/ark-aur/releases", headers={"User-Agent": "Antigravity"}); data = json.loads(urllib.request.urlopen(req).read().decode()); [print(a["browser_download_url"]) for a in data[0].get("assets", []) if a["name"].endswith(".pkg.tar.zst") or a["name"].endswith(".pkg.tar.xz")]' | wget -qi -
           cd ..
       - name: Download Alga Package
         run: |
