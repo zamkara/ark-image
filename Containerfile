@@ -118,6 +118,10 @@ RUN chmod +x /usr/libexec/ark/bls-sync.sh
 COPY bls-sync.conf /usr/lib/systemd/system/ostree-finalize-staged.service.d/bls-sync.conf
 COPY bls-sync.conf /usr/lib/systemd/system/bootc-finalize-staged.service.d/bls-sync.conf
 
+# Boot-time BLS sync — ensures correct entry names on first boot after install
+COPY ark-bls-sync.service /usr/lib/systemd/system/ark-bls-sync.service
+RUN systemctl enable ark-bls-sync.service
+
 # Pacman handler — catch accidental pacman calls on immutable host
 COPY pacman.sh /usr/local/bin/pacman
 RUN chmod +x /usr/local/bin/pacman

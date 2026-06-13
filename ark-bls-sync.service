@@ -1,0 +1,12 @@
+[Unit]
+Description=Ark BLS Boot Entry Sync
+After=local-fs.target
+ConditionPathExists=/usr/libexec/ark/bls-sync.sh
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash /usr/libexec/ark/bls-sync.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
