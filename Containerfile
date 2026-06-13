@@ -126,6 +126,9 @@ RUN chmod +x /usr/local/bin/pacman
 COPY alga-wrapper.sh /usr/local/bin/alga
 RUN chmod +x /usr/local/bin/alga
 
+# Alga desktop entry for GNOME app grid
+COPY com.zamkara.alga.desktop /usr/share/applications/com.zamkara.alga.desktop
+
 # Alga self-update timer — checks for alga updates periodically
 COPY alga-update.service /usr/lib/systemd/system/alga-update.service
 COPY alga-update.timer /usr/lib/systemd/system/alga-update.timer
