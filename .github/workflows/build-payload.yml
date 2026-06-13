@@ -182,8 +182,8 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y podman wget
       - name: Download AUR packages
         run: |
-          mkdir -p aur-packages
-          cd aur-packages
+          mkdir -p .github/aur-packages
+          cd .github/aur-packages
           python3 << 'EOF' | wget -qi -
           import urllib.request, json
           req = urllib.request.Request("https://api.github.com/repos/zamkara/ark-aur/releases/latest", headers={"User-Agent": "Antigravity"})
@@ -192,10 +192,10 @@ jobs:
               if a["name"].endswith(".pkg.tar.zst") or a["name"].endswith(".pkg.tar.xz"):
                   print(a["browser_download_url"])
           EOF
-          cd ..
+          cd ../..
       - name: Download Alga Package
         run: |
-          cd aur-packages
+          cd .github/aur-packages
           ALGA_URL=$(curl -s "https://api.github.com/repos/zamkara/alga/releases/latest" | jq -r '.assets[] | select(.name | contains("debug") | not) | .browser_download_url' | head -1)
           if [ -n "$ALGA_URL" ]; then
             echo "Downloading Alga Package: $ALGA_URL"
@@ -226,32 +226,32 @@ jobs:
           PYEOF
           echo "Final packages in dir:"
           ls -lh
-          cd ..
+          cd ../..
       - name: Download Prebuilt Pacman Cache
         run: |
-          mkdir -p pacman-cache
+          mkdir -p .github/pacman-cache
           for part in aa ab ac ad ae af; do
             wget -q https://github.com/zamkara/ark-aur/releases/download/latest/pacman-cache.tar.gz.part-$part || break
           done
           if ls pacman-cache.tar.gz.part-* 1>/dev/null 2>&1; then
             cat pacman-cache.tar.gz.part-* > pacman-cache.tar.gz
-            tar -xzf pacman-cache.tar.gz -C pacman-cache/
+            tar -xzf pacman-cache.tar.gz -C .github/pacman-cache/
             rm pacman-cache.tar.gz.part-* pacman-cache.tar.gz
           fi
       - name: Cache Pacman Payload
         uses: actions/cache@v4
         with:
-          path: pacman-cache/
-          key: ${{ runner.os }}-pacman-payload-${{ matrix.variant }}-${{ hashFiles('Containerfile') }}
+          path: .github/pacman-cache/
+          key: ${{ runner.os }}-pacman-payload-${{ matrix.variant }}-${{ hashFiles('.github/Containerfile') }}
           restore-keys: |
             ${{ runner.os }}-pacman-payload-${{ matrix.variant }}-
             ${{ runner.os }}-pacman-payload-
       - name: Prepare Cache Dir
-        run: mkdir -p pacman-cache
+        run: mkdir -p .github/pacman-cache
       - name: Build custom ark image with bootupd
         run: |
-          sudo podman build -v $(pwd)/pacman-cache:/var/cache/pacman/pkg --squash-all --build-arg VARIANT=${{ matrix.variant }} -t ghcr.io/${{ github.repository }}:${{ matrix.variant }} -f Containerfile .
-          sudo chown -R $USER:$USER pacman-cache/
+          sudo podman build -v $(pwd)/.github/pacman-cache:/var/cache/pacman/pkg --squash-all --build-arg VARIANT=${{ matrix.variant }} -t ghcr.io/${{ github.repository }}:${{ matrix.variant }} -f .github/Containerfile .github/
+          sudo chown -R $USER:$USER .github/pacman-cache/
       - name: Log in to the Container registry
         run: echo "${{ secrets.GITHUB_TOKEN }}" | sudo podman login ghcr.io -u ${{ github.actor }} --password-stdin
       - name: Push payload image to GHCR
