@@ -37,9 +37,15 @@ if [ -z "$ESP" ]; then
 fi
 [ -z "$ESP" ] && exit 0
 
-# Mount /sysroot RW jika perlu
+# Mount /sysroot RW jika perlu — coba via device agar tidak gagal pada bind mount
 if ! touch "$SYSROOT/.ark-bls-check" 2>/dev/null; then
-    mount -o remount,rw "$SYSROOT" 2>/dev/null || true
+    SYSROOT_DEV=$(findmnt -n -o SOURCE "$SYSROOT" 2>/dev/null || true)
+    if [ -n "$SYSROOT_DEV" ]; then
+        mount -o remount,rw "$SYSROOT_DEV" "$SYSROOT" 2>/dev/null || \
+        mount -o remount,rw "$SYSROOT" 2>/dev/null || true
+    else
+        mount -o remount,rw "$SYSROOT" 2>/dev/null || true
+    fi
 fi
 rm -f "$SYSROOT/.ark-bls-check" 2>/dev/null || true
 
@@ -165,9 +171,14 @@ for entry in "$ESP/loader/entries/ostree-"*.conf; do
     fi
 done
 
-# Hapus entry bawaan ostree/bootc agar tidak ganda
-rm -f "$ESP/loader/entries/ostree-default-"*.conf 2>/dev/null || true
-rm -f "$ESP/loader/entries/ostree-"*-default.conf 2>/dev/null || true
+# Hapus semua entry yang title-nya mengandung "(ostree:" — format auto-generated bootc/ostree
+for entry in "$ESP/loader/entries/"*.conf; do
+    [ ! -f "$entry" ] && continue
+    if grep -q "title.*ostree:" "$entry" 2>/dev/null; then
+        echo "bls-sync: Removing auto-generated entry $(basename $entry)"
+        rm -f "$entry"
+    fi
+done
 
 if [ ! -f "$ESP/loader/loader.conf" ]; then
     cat > "$ESP/loader/loader.conf" <<LOADER
