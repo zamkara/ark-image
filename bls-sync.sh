@@ -120,9 +120,9 @@ for deploy_id in $deployments; do
     bootserial="${deploy_id##*.}"
     ostree_param="ostree=/ostree/boot.0/default/${bootcsum}/${bootserial}"
     bootlink_dir="$SYSROOT/ostree/boot.0/default/$bootcsum"
-    mkdir -p "$bootlink_dir"
-    ln -sfn "../../../deploy/default/deploy/$deploy_id" "$bootlink_dir/$bootserial"
-    deploy_date=$(date -r "$deploy_path" "+%Y%m%d" 2>/dev/null || date "+%Y%m%d")
+    mkdir -p "$bootlink_dir" 2>/dev/null || true
+    ln -sfn "../../../deploy/default/deploy/$deploy_id" "$bootlink_dir/$bootserial" 2>/dev/null || true
+    deploy_date=$(date -r "$deploy_path" "+%Y%m%d%H%M%S" 2>/dev/null || date "+%Y%m%d%H%M%S")
     title="Arch Linux $deploy_date"
 
     cmdline=""
