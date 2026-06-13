@@ -69,6 +69,9 @@ RUN systemctl enable gdm NetworkManager && \
 # Ensure bootupd is executable
 RUN chmod +x /usr/libexec/bootupd /usr/bin/bootupctl
 
+# Ensure /var/home is created on every boot (persists user home dirs across upgrades)
+COPY ark-home.conf /usr/lib/tmpfiles.d/ark-home.conf
+
 # Setup Nix package manager for persistent usage across OSTree upgrades
 # /nix/store stays in the immutable image; /nix/var/nix is symlinked to /var/nix for persistence
 RUN set -e; \
