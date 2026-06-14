@@ -1,6 +1,6 @@
 [Unit]
 Description=Ark BLS Boot Entry Sync
-After=local-fs.target
+After=local-fs.target bootc-finalize-staged.service ostree-finalize-staged.service
 ConditionPathExists=/usr/libexec/ark/bls-sync.sh
 
 [Service]
