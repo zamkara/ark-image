@@ -135,6 +135,8 @@ RUN chmod +x /usr/local/bin/alga
 
 # Alga desktop entry for GNOME app grid
 COPY com.zamkara.alga.desktop /usr/share/applications/com.zamkara.alga.desktop
+# D-Bus service file for notification action button routing
+COPY com.zamkara.alga.service /usr/share/dbus-1/services/com.zamkara.alga.service
 
 # Alga self-update timer — checks for alga updates periodically
 COPY alga-update.service /usr/lib/systemd/system/alga-update.service

@@ -7,5 +7,6 @@ Exec=/usr/local/bin/alga
 Icon=drive-harddisk-solidstate
 Terminal=false
 Type=Application
+DBusActivatable=true
 Categories=System;
 StartupNotify=true
