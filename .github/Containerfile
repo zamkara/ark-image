@@ -31,14 +31,18 @@ RUN set -e; \
             pacman -S --noconfirm nvidia-open-dkms ${KERNEL}-headers dkms nvidia-utils nvidia-settings; \
         fi; \
     fi; \
-    pacman -U --noconfirm /tmp/*.pkg.tar.zst; \
+    _pkgs=$(ls /tmp/*.pkg.tar.zst 2>/dev/null | grep -vE '/(linux|linux-zen|linux-lts|linux-hardened)-headers-[0-9]' | tr '\n' ' '); \
+    [ -n "$_pkgs" ] && pacman -U --noconfirm $_pkgs || true; \
+    pacman -U --noconfirm /tmp/${KERNEL}-headers-*.pkg.tar.zst 2>/dev/null || true; \
+    KVER=$(ls -1 /usr/lib/modules | grep -v extramodules | head -n1); \
+    dkms autoinstall -k "$KVER" 2>/dev/null || true; \
     sed -i 's/^#\(.*UTF-8.*\)/\1/' /etc/locale.gen; \
     locale-gen; \
     echo "LANG=en_US.UTF-8" > /etc/locale.conf; \
     ln -sf /usr/share/zoneinfo/UTC /etc/localtime; \
     chmod u+s /usr/bin/newuidmap /usr/bin/newgidmap; \
     rm -f /tmp/*.pkg.tar.zst; \
-    rm -f /usr/share/applications/{bssh,bvnc,avahi-discover,qv4l2,qvidcap,stoken-gui,stoken-gui-small,org.gnome.Extensions,org.gnome.TextEditor,lstopo,hwloc-ls,org.gnome.Logs,ibus,ibus-setup,ibus-wayland,scrcpy,scrcpy-console}.desktop 2>/dev/null || true; \
+    rm -f /usr/share/applications/{bssh,bvnc,avahi-discover,qv4l2,qvidcap,stoken-gui,stoken-gui-small,org.gnome.Extensions,org.gnome.TextEditor,lstopo,hwloc-ls,org.gnome.Logs,ibus,ibus-setup,ibus-wayland,scrcpy,scrcpy-console,veracrypt,timeshift,timeshift-gtk,org.freedesktop.MalcontentControl}.desktop 2>/dev/null || true; \
     pacman -Scc --noconfirm
 
 # Pre-pull archlinux container for instant distrobox readiness on first boot
