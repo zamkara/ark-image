@@ -69,7 +69,12 @@ RUN systemctl enable gdm NetworkManager && \
 # Ensure bootupd is executable
 RUN chmod +x /usr/libexec/bootupd /usr/bin/bootupctl
 
-# Ensure /var/home is created on every boot (persists user home dirs across upgrades)
+# /home and /root must be symlinks into /var so user data persists across OSTree upgrades
+RUN rm -rf /home /root && \
+    ln -sf var/home /home && \
+    ln -sf var/roothome /root
+
+# Ensure /var/home and /var/roothome exist on every boot
 COPY ark-home.conf /usr/lib/tmpfiles.d/ark-home.conf
 
 # Setup Nix package manager for persistent usage across OSTree upgrades
