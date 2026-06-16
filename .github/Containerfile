@@ -67,6 +67,7 @@ RUN systemctl enable gdm NetworkManager && \
     printf "[sysroot]\ncomposefs=false\n" > /etc/ostree/prepare-root.conf && \
     mkdir -p /sysroot && \
     mkdir -p /sysroot/ostree && \
+    mkdir -p /.snapshots && \
     ln -sfn sysroot/ostree /ostree && \
     glib-compile-schemas /usr/share/glib-2.0/schemas/
 
