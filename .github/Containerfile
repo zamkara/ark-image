@@ -83,7 +83,8 @@ RUN rm -rf /home /root && \
 COPY ark-home.conf /usr/lib/tmpfiles.d/ark-home.conf
 
 # Setup Nix package manager for persistent usage across OSTree upgrades
-# /nix/store stays in the immutable image; /nix/var/nix is symlinked to /var/nix for persistence
+# /nix is on a dedicated @nix btrfs subvolume (created by alga at install time)
+# /nix/var/nix is symlinked to /var/nix for persistent state across upgrades
 RUN set -e; \
     mkdir -p /var/nix; \
     rm -rf /nix/var/nix; \
