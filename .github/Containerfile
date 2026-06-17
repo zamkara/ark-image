@@ -53,7 +53,7 @@ RUN mkdir -p /etc/containers && \
 
 # Enable plymouth and ostree in mkinitcpio
 RUN sed -i 's/^MODULES=.*/MODULES=(btrfs vfat ext4 xfs erofs overlay loop)/g' /etc/mkinitcpio.conf && \
-    sed -i 's/^HOOKS=.*/HOOKS=(base systemd microcode modconf kms keyboard sd-vconsole block plymouth ostree filesystems fsck)/g' /etc/mkinitcpio.conf && \
+    sed -i 's/^HOOKS=.*/HOOKS=(base systemd microcode modconf kms keyboard sd-vconsole block sd-encrypt plymouth ostree filesystems fsck)/g' /etc/mkinitcpio.conf && \
     mkinitcpio -P && \
     KVER=$(ls -1 /usr/lib/modules | grep -v 'extramodules' | head -n 1) && \
     IMG=$(ls -1 /boot/initramfs-*.img | grep -v 'fallback' | head -n 1) && \

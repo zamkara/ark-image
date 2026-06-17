@@ -2,6 +2,9 @@
 aur-packages/*.pkg.tar.zst
 *.pkg.tar.zst
 
+# Local commit script
+commit.sh
+
 # IDE
 .vscode/
 .idea/
