@@ -103,6 +103,17 @@ mkdir -p "$ESP/loader/entries" "$ESP/ostree"
 ROOT_UUID=$(findmnt -n -o UUID "$SYSROOT" 2>/dev/null || blkid -s UUID -o value "$(findmnt -n -o SOURCE "$SYSROOT" 2>/dev/null)" 2>/dev/null || echo "")
 ROOT_SUBVOL=$(findmnt -n -o OPTIONS "$SYSROOT" 2>/dev/null | tr ',' '\n' | grep '^subvol=' | head -1 | sed 's|^subvol=||;s|^/||' || true)
 
+# Detect LUKS-encrypted root
+LUKS_UUID=""
+_root_source=$(findmnt -n -o SOURCE "$SYSROOT" 2>/dev/null || true)
+if echo "$_root_source" | grep -q "^/dev/mapper/"; then
+    _luks_name="${_root_source##*/}"
+    _luks_backing=$(cryptsetup status "$_luks_name" 2>/dev/null | awk '/device:/ {print $2}' || true)
+    if [ -n "$_luks_backing" ]; then
+        LUKS_UUID=$(blkid -s UUID -o value "$_luks_backing" 2>/dev/null || true)
+    fi
+fi
+
 count=0
 for deploy_id in $deployments; do
     deploy_id=$(echo "$deploy_id" | tr -d '\n\r ')
@@ -187,7 +198,13 @@ for deploy_id in $deployments; do
         fi
     done
     if [ -z "$cmdline" ]; then
-        if [ -n "$ROOT_SUBVOL" ] && [ "$ROOT_SUBVOL" != "/" ]; then
+        if [ -n "$LUKS_UUID" ]; then
+            if [ -n "$ROOT_SUBVOL" ] && [ "$ROOT_SUBVOL" != "/" ]; then
+                cmdline="rd.luks.name=$LUKS_UUID=ark-root root=/dev/mapper/ark-root rootflags=subvol=$ROOT_SUBVOL rw quiet splash loglevel=3 rd.udev.log_priority=3"
+            else
+                cmdline="rd.luks.name=$LUKS_UUID=ark-root root=/dev/mapper/ark-root rw quiet splash loglevel=3 rd.udev.log_priority=3"
+            fi
+        elif [ -n "$ROOT_SUBVOL" ] && [ "$ROOT_SUBVOL" != "/" ]; then
             cmdline="root=UUID=$ROOT_UUID rootflags=subvol=$ROOT_SUBVOL rw quiet splash loglevel=3 rd.udev.log_priority=3"
         else
             cmdline="root=UUID=$ROOT_UUID rw quiet splash loglevel=3 rd.udev.log_priority=3"
