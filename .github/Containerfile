@@ -45,11 +45,10 @@ RUN set -e; \
     rm -f /usr/share/applications/{bssh,bvnc,avahi-discover,qv4l2,qvidcap,stoken-gui,stoken-gui-small,org.gnome.Extensions,org.gnome.TextEditor,lstopo,hwloc-ls,org.gnome.Logs,ibus,ibus-setup,ibus-wayland,scrcpy,scrcpy-console,veracrypt,timeshift,timeshift-gtk,org.freedesktop.MalcontentControl,nvtop}.desktop 2>/dev/null || true; \
     pacman -Scc --noconfirm
 
-# Pre-pull archlinux container for instant distrobox readiness on first boot
-# Note: use VFS storage driver because CI runs inside a container where overlayfs is nested
-RUN mkdir -p /etc/containers && \
-    printf '[storage]\ndriver = "vfs"\n' > /etc/containers/storage.conf && \
-    podman pull docker.io/archlinux:latest
+# /orundum is a dedicated btrfs @orundum subvolume (created by alga at install time)
+# It stores the pre-pulled ark-orundum container image for offline distrobox readiness
+RUN mkdir -p /orundum /etc/containers && \
+    printf '[storage]\ndriver = "overlay"\nadditionalimagestores = [\n  "/orundum/containers/storage",\n]\n' > /etc/containers/storage.conf
 
 # Enable plymouth and ostree in mkinitcpio
 RUN sed -i 's/^MODULES=.*/MODULES=(btrfs vfat ext4 xfs erofs overlay loop)/g' /etc/mkinitcpio.conf && \

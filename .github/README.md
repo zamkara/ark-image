@@ -14,7 +14,6 @@ This repository defines the base `Containerfile` used to provision the OSTree de
 | Nix package manager | Pre-built via ark-aur |
 | Plymouth (boot splash) | Pre-built via ark-aur |
 | MoreWaita icon theme | Pre-built via ark-aur |
-| Helium browser | Pre-built via ark-aur (imputnet/helium-linux releases) |
 | starship, fastfetch | Pre-built via ark-aur |
 | bootc, bootupd, ostree | Pre-built via ark-aur |
 
