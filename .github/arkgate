@@ -1,0 +1,6 @@
+#!/bin/bash
+if distrobox list | awk -F'|' '{gsub(/^[ \t]+|[ \t]+$/, "", $2); print $2}' | grep -qx 'archlinux'; then
+    distrobox enter archlinux
+else
+    bash /etc/archlinux
+fi

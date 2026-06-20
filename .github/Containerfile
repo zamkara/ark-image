@@ -47,8 +47,12 @@ RUN set -e; \
 
 # /orundum is a dedicated btrfs @orundum subvolume (created by alga at install time)
 # It stores the pre-pulled ark-orundum container image for offline distrobox readiness
+COPY arkgate /usr/lib/ark/arkgate
 RUN mkdir -p /orundum /etc/containers && \
-    printf '[storage]\ndriver = "overlay"\nadditionalimagestores = [\n  "/orundum/containers/storage",\n]\n' > /etc/containers/storage.conf
+    printf '[storage]\ndriver = "overlay"\n\n[storage.options]\nadditionalimagestores = [\n  "/orundum/containers/storage",\n]\n' > /etc/containers/storage.conf && \
+    chmod +x /usr/lib/ark/arkgate && \
+    sed -i '0,/^Exec=kgx$/s|^Exec=kgx$|Exec=kgx -- /usr/lib/ark/arkgate|' /usr/share/applications/org.gnome.Console.desktop && \
+    sed -i 's/^DBusActivatable=true/DBusActivatable=false/' /usr/share/applications/org.gnome.Console.desktop
 
 # Enable plymouth and ostree in mkinitcpio
 RUN sed -i 's/^MODULES=.*/MODULES=(btrfs vfat ext4 xfs erofs overlay loop)/g' /etc/mkinitcpio.conf && \
