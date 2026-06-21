@@ -139,10 +139,6 @@ COPY bls-sync.conf /usr/lib/systemd/system/bootc-finalize-staged.service.d/bls-s
 COPY ark-bls-sync.service /usr/lib/systemd/system/ark-bls-sync.service
 RUN systemctl enable ark-bls-sync.service
 
-# Pacman handler — catch accidental pacman calls on immutable host
-COPY pacman.sh /usr/lib/ark/pacman
-RUN chmod +x /usr/lib/ark/pacman
-
 # Alga wrapper — prefer updated binary from /var/lib/alga/bin
 COPY alga-wrapper.sh /usr/lib/ark/alga-wrapper
 RUN chmod +x /usr/lib/ark/alga-wrapper
