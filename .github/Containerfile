@@ -143,6 +143,10 @@ RUN systemctl enable ark-bls-sync.service
 COPY alga-wrapper.sh /usr/lib/ark/alga-wrapper
 RUN chmod +x /usr/lib/ark/alga-wrapper
 
+# Pacman host wrapper — ark-home.conf symlinks /usr/local/bin/pacman → this
+COPY pacman.sh /usr/lib/ark/pacman
+RUN chmod +x /usr/lib/ark/pacman
+
 # /usr/local → /var/usrlocal symlink (OSTree-compatible writable /usr/local)
 RUN rm -rf /usr/local && ln -sf /var/usrlocal /usr/local
 
