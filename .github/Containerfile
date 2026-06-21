@@ -46,10 +46,16 @@ RUN set -e; \
     pacman -Scc --noconfirm
 
 # /orundum is a dedicated btrfs @orundum subvolume (created by alga at install time)
-# It stores the pre-pulled ark-orundum container image for offline distrobox readiness
+# It stores the pre-pulled ark-orundum container image for offline distrobox readiness.
+# storage.conf at /etc is read by ROOT podman; rootless podman does NOT inherit
+# additionalimagestores from the system storage.conf (containers/storage #6430), so the
+# same setting is ALSO seeded into /etc/skel so every install-created user gets it in
+# their per-user ~/.config/containers/storage.conf. No mount_program: the @orundum store
+# is created with native overlay (.has-mount-program=false) and rootless must match it.
 COPY arkgate /usr/lib/ark/arkgate
-RUN mkdir -p /orundum /etc/containers && \
+RUN mkdir -p /orundum /etc/containers /etc/skel/.config/containers && \
     printf '[storage]\ndriver = "overlay"\n\n[storage.options]\nadditionalimagestores = [\n  "/orundum/containers/storage",\n]\n' > /etc/containers/storage.conf && \
+    printf '[storage]\ndriver = "overlay"\n\n[storage.options]\nadditionalimagestores = [\n  "/orundum/containers/storage",\n]\n' > /etc/skel/.config/containers/storage.conf && \
     chmod +x /usr/lib/ark/arkgate && \
     sed -i '0,/^Exec=kgx$/s|^Exec=kgx$|Exec=kgx -- /usr/lib/ark/arkgate|' /usr/share/applications/org.gnome.Console.desktop && \
     sed -i 's/^DBusActivatable=true/DBusActivatable=false/' /usr/share/applications/org.gnome.Console.desktop
