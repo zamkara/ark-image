@@ -1,2 +1,2 @@
 #!/bin/bash
-exec distrobox enter archlinux -- pacman "$@"
+exec distrobox enter --root archlinux -- pacman "$@"
