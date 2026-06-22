@@ -1,6 +1,5 @@
 #!/bin/bash
-if distrobox list | awk -F'|' '{gsub(/^[ \t]+|[ \t]+$/, "", $2); print $2}' | grep -qx 'archlinux'; then
-    distrobox enter archlinux
-else
-    bash /etc/archlinux
-fi
+# GNOME Console entry point: ensure the arch distrobox exists (image pulled on
+# first use), then drop the user into an interactive shell inside it.
+[ -f /etc/archlinux ] && bash /etc/archlinux
+exec distrobox enter archlinux

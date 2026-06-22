@@ -45,17 +45,16 @@ RUN set -e; \
     rm -f /usr/share/applications/{bssh,bvnc,avahi-discover,qv4l2,qvidcap,stoken-gui,stoken-gui-small,org.gnome.Extensions,org.gnome.TextEditor,lstopo,hwloc-ls,org.gnome.Logs,ibus,ibus-setup,ibus-wayland,scrcpy,scrcpy-console,veracrypt,timeshift,timeshift-gtk,org.freedesktop.MalcontentControl,nvtop}.desktop 2>/dev/null || true; \
     pacman -Scc --noconfirm
 
-# /orundum is a dedicated btrfs @orundum subvolume (created by alga at install time)
-# It stores the pre-pulled ark-orundum container image for offline distrobox readiness.
-# storage.conf at /etc is read by ROOT podman; rootless podman does NOT inherit
-# additionalimagestores from the system storage.conf (containers/storage #6430), so the
-# same setting is ALSO seeded into /etc/skel so every install-created user gets it in
-# their per-user ~/.config/containers/storage.conf. No mount_program: the @orundum store
-# is created with native overlay (.has-mount-program=false) and rootless must match it.
+# /orundum is a dedicated btrfs @orundum subvolume (created by alga at install time).
+# No image is pre-pulled — the arch container is created on first use (arkgate /
+# pacman wrapper / /etc/archlinux), and rootless container storage for EVERY user
+# lives on /orundum: each user's ~/.local/share/containers is a symlink into
+# /orundum/containers (seeded via /etc/skel). /orundum/containers is created
+# world-writable (1777, sticky) by ark-orundum.conf tmpfiles so any user can use it.
 COPY arkgate /usr/lib/ark/arkgate
-RUN mkdir -p /orundum /etc/containers /etc/skel/.config/containers && \
-    printf '[storage]\ndriver = "overlay"\n\n[storage.options]\nadditionalimagestores = [\n  "/orundum/containers/storage",\n]\n' > /etc/containers/storage.conf && \
-    printf '[storage]\ndriver = "overlay"\n\n[storage.options]\nadditionalimagestores = [\n  "/orundum/containers/storage",\n]\n' > /etc/skel/.config/containers/storage.conf && \
+COPY ark-orundum.conf /usr/lib/tmpfiles.d/ark-orundum.conf
+RUN mkdir -p /orundum /etc/skel/.local/share && \
+    ln -sfn /orundum/containers /etc/skel/.local/share/containers && \
     chmod +x /usr/lib/ark/arkgate && \
     sed -i '0,/^Exec=kgx$/s|^Exec=kgx$|Exec=kgx -- /usr/lib/ark/arkgate|' /usr/share/applications/org.gnome.Console.desktop && \
     sed -i 's/^DBusActivatable=true/DBusActivatable=false/' /usr/share/applications/org.gnome.Console.desktop
@@ -144,10 +143,6 @@ COPY bls-sync.conf /usr/lib/systemd/system/bootc-finalize-staged.service.d/bls-s
 # Boot-time BLS sync — ensures correct entry names on first boot after install
 COPY ark-bls-sync.service /usr/lib/systemd/system/ark-bls-sync.service
 RUN systemctl enable ark-bls-sync.service
-
-# Restore setuid bits on every boot (ostree/composefs may strip them)
-COPY ark-setuid.service /usr/lib/systemd/system/ark-setuid.service
-RUN systemctl enable ark-setuid.service
 
 # Alga wrapper — prefer updated binary from /var/lib/alga/bin
 COPY alga-wrapper.sh /usr/lib/ark/alga-wrapper
