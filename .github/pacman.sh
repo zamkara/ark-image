@@ -1,15 +1,25 @@
 #!/bin/bash
-# Host pacman wrapper for the immutable system (real pacman is removed).
+# Host pacman wrapper. Real pacman is removed on the immutable host; package
+# management happens inside the 'archlinux' distrobox container.
 #
-# - If the 'archlinux' distrobox container already exists, run pacman inside it
-#   (via the container's passwordless sudo — no host sudo needed).
-# - If it does not exist yet, OFFER to create it. /etc/archlinux is written by
-#   the installer (alga) with the ark-orundum image tag matching THIS system's
-#   variant, so the created container always matches the installed variant.
-#   The image is pulled on first creation.
+# We run pacman as the container's root via `podman exec --user root` — this
+# needs NO sudo (neither on the host nor inside the container), so it is immune
+# to the setuid bit being stripped (rootless podman maps container uid 0 to the
+# invoking user via the user namespace, giving full in-container privileges).
+#
+# /etc/archlinux is written by the installer (alga) with the ark-orundum image
+# tag matching THIS system's variant, so a freshly created container always
+# matches the installed variant. The image is pulled on first creation.
+
+run_pacman() {
+    podman start archlinux >/dev/null 2>&1
+    local flags=-i
+    [ -t 1 ] && flags=-it
+    exec podman exec --user root "$flags" archlinux pacman "$@"
+}
 
 if podman container exists archlinux 2>/dev/null; then
-    exec distrobox enter archlinux -- sudo pacman "$@"
+    run_pacman "$@"
 fi
 
 echo "Distrobox container 'archlinux' belum ada di sistem ini."
@@ -27,4 +37,4 @@ fi
 
 echo "Membuat container 'archlinux' (mengunduh image, mohon tunggu)..."
 bash /etc/archlinux
-exec distrobox enter archlinux -- sudo pacman "$@"
+run_pacman "$@"
