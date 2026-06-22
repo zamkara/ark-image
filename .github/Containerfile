@@ -46,11 +46,9 @@ RUN set -e; \
     pacman -Scc --noconfirm
 
 # /orundum is a dedicated btrfs @orundum subvolume (created by alga at install time).
-# No image is pre-pulled — the arch container is created on first use (arkgate /
-# pacman wrapper / /etc/archlinux), and rootless container storage for EVERY user
-# lives on /orundum: each user's ~/.local/share/containers is a symlink into
-# /orundum/containers (seeded via /etc/skel). /orundum/containers is created
-# world-writable (1777, sticky) by ark-orundum.conf tmpfiles so any user can use it.
+# Rootless container storage for every user lives on /orundum: each user's
+# ~/.local/share/containers is a symlink into /orundum/containers seeded via /etc/skel.
+# /orundum/containers is world-writable 1777 via ark-orundum.conf tmpfiles.
 COPY arkgate /usr/lib/ark/arkgate
 COPY ark-orundum.conf /usr/lib/tmpfiles.d/ark-orundum.conf
 RUN mkdir -p /orundum /etc/skel/.local/share && \
@@ -148,9 +146,9 @@ RUN systemctl enable ark-bls-sync.service
 COPY alga-wrapper.sh /usr/lib/ark/alga-wrapper
 RUN chmod +x /usr/lib/ark/alga-wrapper
 
-# Pacman host wrapper — ark-home.conf symlinks /usr/local/bin/pacman → this
-COPY pacman.sh /usr/lib/ark/pacman
-RUN chmod +x /usr/lib/ark/pacman
+# Universal package manager wrapper — ark-home.conf symlinks all PMs → this
+COPY pkgwrap.sh /usr/lib/ark/pkgwrap
+RUN chmod +x /usr/lib/ark/pkgwrap
 
 # /usr/local → /var/usrlocal symlink (OSTree-compatible writable /usr/local)
 RUN rm -rf /usr/local && ln -sf /var/usrlocal /usr/local

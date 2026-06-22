@@ -1,8 +1,5 @@
 #!/bin/bash
-# GNOME Console entry point: ensure the 'archlinux' distrobox exists (created
-# from /etc/archlinux with the image tag matching this system's variant; image
-# pulled on first use), then drop the user into an interactive shell inside it.
 if ! podman container exists archlinux 2>/dev/null; then
-    [ -f /etc/archlinux ] && bash /etc/archlinux
+    distrobox create --image ghcr.io/archlinux/archlinux:latest --name archlinux --no-entry --yes >/dev/null 2>&1
 fi
 exec distrobox enter archlinux
