@@ -148,6 +148,10 @@ COPY bls-sync.conf /usr/lib/systemd/system/bootc-finalize-staged.service.d/bls-s
 COPY ark-bls-sync.service /usr/lib/systemd/system/ark-bls-sync.service
 RUN systemctl enable ark-bls-sync.service
 
+# Restore setuid bits on every boot (ostree/composefs may strip them)
+COPY ark-setuid.service /usr/lib/systemd/system/ark-setuid.service
+RUN systemctl enable ark-setuid.service
+
 # Alga wrapper — prefer updated binary from /var/lib/alga/bin
 COPY alga-wrapper.sh /usr/lib/ark/alga-wrapper
 RUN chmod +x /usr/lib/ark/alga-wrapper
