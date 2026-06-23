@@ -99,6 +99,7 @@ RUN set -e; \
         if [[ "$VARIANT" == *"-lts"* ]]; then CACHY_KERNEL="linux-cachyos-lts"; fi; \
         if [[ "$VARIANT" == *"-hardened"* ]]; then CACHY_KERNEL="linux-cachyos-hardened"; fi; \
         printf '\n[cachyos]\nSigLevel = Never\nServer = https://mirror.cachyos.org/repo/$arch/$repo\n' >> /etc/pacman.conf; \
+        pacman-key --init; \
         pacman -Sy --noconfirm cachyos-keyring; \
         pacman-key --populate cachyos; \
         sed -i '/SigLevel = Never/d' /etc/pacman.conf; \
