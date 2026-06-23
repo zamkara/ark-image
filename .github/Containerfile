@@ -8,89 +8,42 @@ ARG VARIANT
 LABEL ostree.bootable="true"
 LABEL containers.bootc="1"
 
-COPY aur-packages/*.pkg.tar.zst /tmp/
-
-# Determine kernel based on variant
+# Layer 1: Base system packages (no kernel — variant-independent)
 RUN set -e; \
-    sed -i '/NoExtract/d' /etc/pacman.conf && printf '\n[multilib]\nInclude = /etc/pacman.d/mirrorlist\n' >> /etc/pacman.conf; \
-    KERNEL="linux"; \
-    if [[ "$VARIANT" == *"-zen"* ]]; then KERNEL="linux-zen"; fi; \
-    if [[ "$VARIANT" == *"-lts"* ]]; then KERNEL="linux-lts"; fi; \
-    if [[ "$VARIANT" == *"-hardened"* ]]; then KERNEL="linux-hardened"; fi; \
+    sed -i '/NoExtract/d' /etc/pacman.conf && \
+    printf '\n[multilib]\nInclude = /etc/pacman.d/mirrorlist\n' >> /etc/pacman.conf; \
     pacman -Syu --noconfirm; \
     pacman -S --noconfirm \
-    base base-devel glibc $KERNEL linux-firmware networkmanager mkinitcpio \
-    gnome-shell gnome-control-center gnome-keyring gnome-session gnome-settings-daemon nautilus xdg-desktop-portal-gnome xdg-user-dirs-gtk gnome-console gdm gnome-software flatpak gnome-initial-setup \
-    webp-pixbuf-loader libheif libavif libraw ffmpegthumbnailer poppler-glib libgsf \
-    util-linux openssl efibootmgr dosfstools e2fsprogs xfsprogs ostree skopeo btrfs-progs podman composefs ibus iso-codes shadow sudo git nano zsh fish; \
-    if [[ "$VARIANT" == *"-nvidia" ]]; then \
-        pacman -S --noconfirm steam lib32-nvidia-utils nvtop; \
-        if [ "$KERNEL" = "linux" ]; then \
-            pacman -S --noconfirm nvidia-open nvidia-utils nvidia-settings; \
-        else \
-            pacman -S --noconfirm nvidia-open-dkms ${KERNEL}-headers dkms nvidia-utils nvidia-settings; \
-        fi; \
-    fi; \
-    _pkgs=$(ls /tmp/*.pkg.tar.zst 2>/dev/null | grep -vE '/(linux|linux-zen|linux-lts|linux-hardened)-headers-[0-9]' | tr '\n' ' '); \
-    [ -n "$_pkgs" ] && pacman -U --noconfirm $_pkgs || true; \
-    pacman -U --noconfirm /tmp/${KERNEL}-headers-*.pkg.tar.zst 2>/dev/null || true; \
-    KVER=$(ls -1 /usr/lib/modules | grep -v extramodules | head -n1); \
-    dkms autoinstall -k "$KVER" 2>/dev/null || true; \
+        base base-devel glibc linux-firmware networkmanager mkinitcpio \
+        gnome-shell gnome-control-center gnome-keyring gnome-session gnome-settings-daemon \
+        nautilus xdg-desktop-portal-gnome xdg-user-dirs-gtk gnome-console gdm gnome-software \
+        flatpak gnome-initial-setup \
+        webp-pixbuf-loader libheif libavif libraw ffmpegthumbnailer poppler-glib libgsf \
+        util-linux openssl efibootmgr dosfstools e2fsprogs xfsprogs ostree skopeo \
+        btrfs-progs podman composefs ibus iso-codes shadow sudo git nano zsh fish; \
     sed -i 's/^#\(.*UTF-8.*\)/\1/' /etc/locale.gen; \
     locale-gen; \
     echo "LANG=en_US.UTF-8" > /etc/locale.conf; \
     ln -sf /usr/share/zoneinfo/UTC /etc/localtime; \
     chmod u+s /usr/bin/newuidmap /usr/bin/newgidmap; \
-    rm -f /tmp/*.pkg.tar.zst; \
-    rm -f /usr/share/applications/{bssh,bvnc,avahi-discover,qv4l2,qvidcap,stoken-gui,stoken-gui-small,org.gnome.Extensions,org.gnome.TextEditor,lstopo,hwloc-ls,org.gnome.Logs,ibus,ibus-setup,ibus-wayland,scrcpy,scrcpy-console,veracrypt,timeshift,timeshift-gtk,org.freedesktop.MalcontentControl,nvtop}.desktop 2>/dev/null || true; \
     pacman -Scc --noconfirm
 
-# /orundum is a dedicated btrfs @orundum subvolume (created by alga at install time).
-# Rootless container storage for every user lives on /orundum: each user's
-# ~/.local/share/containers is a symlink into /orundum/containers seeded via /etc/skel.
-# /orundum/containers is world-writable 1777 via ark-orundum.conf tmpfiles.
-COPY arkgate /usr/lib/ark/arkgate
-COPY ark-orundum.conf /usr/lib/tmpfiles.d/ark-orundum.conf
-RUN mkdir -p /orundum /etc/skel/.local/share && \
-    ln -sfn /orundum/containers /etc/skel/.local/share/containers && \
-    chmod +x /usr/lib/ark/arkgate && \
-    sed -i '0,/^Exec=kgx$/s|^Exec=kgx$|Exec=kgx -- /usr/lib/ark/arkgate|' /usr/share/applications/org.gnome.Console.desktop && \
-    sed -i 's/^DBusActivatable=true/DBusActivatable=false/' /usr/share/applications/org.gnome.Console.desktop
-
-# Enable plymouth and ostree in mkinitcpio
-RUN sed -i 's/^MODULES=.*/MODULES=(btrfs vfat ext4 xfs erofs overlay loop)/g' /etc/mkinitcpio.conf && \
-    sed -i 's/^HOOKS=.*/HOOKS=(base systemd microcode modconf kms keyboard sd-vconsole block sd-encrypt plymouth ostree filesystems fsck)/g' /etc/mkinitcpio.conf && \
-    mkinitcpio -P && \
-    KVER=$(ls -1 /usr/lib/modules | grep -v 'extramodules' | head -n 1) && \
-    IMG=$(ls -1 /boot/initramfs-*.img | grep -v 'fallback' | head -n 1) && \
-    cp $IMG /usr/lib/modules/$KVER/initramfs.img && \
-    rm -rf /boot/* /var/lib/pacman/sync/* /var/log/* /tmp/* /usr/share/doc/* /usr/share/man/* /usr/share/info/*
-
-# Enable critical system services and setup ostree sysroot structure
+# Layer 2: OSTree sysroot + systemd services
 RUN systemctl enable gdm NetworkManager && \
     systemctl mask systemd-firstboot.service && \
     mkdir -p /etc/ostree && \
     printf "[sysroot]\ncomposefs=false\n" > /etc/ostree/prepare-root.conf && \
-    mkdir -p /sysroot && \
-    mkdir -p /sysroot/ostree && \
-    mkdir -p /.snapshots && \
+    mkdir -p /sysroot /sysroot/ostree /.snapshots && \
     ln -sfn sysroot/ostree /ostree && \
     glib-compile-schemas /usr/share/glib-2.0/schemas/
 
-# Ensure bootupd is executable
-RUN chmod +x /usr/libexec/bootupd /usr/bin/bootupctl
-
-# /home and /root must be symlinks into /var so user data persists across OSTree upgrades
-RUN rm -rf /home /root && \
+# Layer 3: bootupd + home/root symlinks
+RUN chmod +x /usr/libexec/bootupd /usr/bin/bootupctl && \
+    rm -rf /home /root && \
     ln -sf var/home /home && \
     ln -sf var/roothome /root
 
-# Ensure /var/home and /var/roothome exist on every boot
-COPY ark-home.conf /usr/lib/tmpfiles.d/ark-home.conf
-
-# Setup Nix package manager for persistent usage across OSTree upgrades
-# /nix is on a dedicated @nix btrfs subvolume (created by alga at install time)
-# /nix/var/nix is symlinked to /var/nix for persistent state across upgrades
+# Layer 4: Nix setup
 RUN set -e; \
     mkdir -p /var/nix; \
     rm -rf /nix/var/nix; \
@@ -102,68 +55,115 @@ RUN set -e; \
     echo "extra-nix-path = nixpkgs=channel:nixpkgs-unstable" >> /etc/nix/nix.conf; \
     systemctl enable nix-daemon.socket nix-daemon.service
 
-# Remove pacman — useless on immutable host
-RUN rm -rf \
-    /usr/bin/pacman* \
-    /usr/bin/makepkg* \
-    /usr/bin/repo-add \
-    /usr/bin/repo-elephant \
-    /usr/bin/repo-remove \
-    /usr/bin/testpkg \
-    /usr/bin/vercmp \
-    /usr/lib/libalpm.so* \
-    /usr/include/alpm* \
-    /usr/lib/pkgconfig/libalpm.pc \
-    /usr/lib/sysusers.d/alpm.conf \
-    /usr/lib/systemd/system/sockets.target.wants/dirmngr@etc-pacman.d-gnupg.socket \
-    /usr/lib/systemd/system/sockets.target.wants/gpg-agent*@etc-pacman.d-gnupg.socket \
-    /usr/lib/systemd/system/sockets.target.wants/keyboxd@etc-pacman.d-gnupg.socket \
-    /usr/share/bash-completion/completions/pacman* \
-    /usr/share/bash-completion/completions/makepkg* \
-    /usr/share/zsh/site-functions/_pacman* \
-    /usr/share/man/man8/pacman* \
-    /usr/share/man/man8/makepkg* \
-    /usr/share/man/man8/repo-* \
-    /usr/share/man/man8/vercmp* \
-    /usr/share/man/man8/testpkg* \
-    /etc/pacman.conf \
-    /etc/pacman.d/ \
-    /var/lib/pacman/
-
-# BLS sync script — generates BLS entries + copies kernel/initrd to /boot per-deployment
+# Layer 5: BLS sync
 COPY bls-sync.sh /usr/libexec/ark/bls-sync.sh
-RUN chmod +x /usr/libexec/ark/bls-sync.sh
-
-# Drop-in: run BLS sync after finalization for both OSTree and bootc services
 COPY bls-sync.conf /usr/lib/systemd/system/ostree-finalize-staged.service.d/bls-sync.conf
 COPY bls-sync.conf /usr/lib/systemd/system/bootc-finalize-staged.service.d/bls-sync.conf
-
-# Boot-time BLS sync — ensures correct entry names on first boot after install
 COPY ark-bls-sync.service /usr/lib/systemd/system/ark-bls-sync.service
-RUN systemctl enable ark-bls-sync.service
+RUN chmod +x /usr/libexec/ark/bls-sync.sh && \
+    systemctl enable ark-bls-sync.service
 
-# Alga wrapper — prefer updated binary from /var/lib/alga/bin
-COPY alga-wrapper.sh /usr/lib/ark/alga-wrapper
-RUN chmod +x /usr/lib/ark/alga-wrapper
+# Layer 6: Orundum + arkgate
+COPY arkgate /usr/lib/ark/arkgate
+COPY ark-orundum.conf /usr/lib/tmpfiles.d/ark-orundum.conf
+RUN mkdir -p /orundum /etc/skel/.local/share && \
+    ln -sfn /orundum/containers /etc/skel/.local/share/containers && \
+    chmod +x /usr/lib/ark/arkgate && \
+    sed -i '0,/^Exec=kgx$/s|^Exec=kgx$|Exec=kgx -- /usr/lib/ark/arkgate|' /usr/share/applications/org.gnome.Console.desktop && \
+    sed -i 's/^DBusActivatable=true/DBusActivatable=false/' /usr/share/applications/org.gnome.Console.desktop
 
-# Universal package manager wrapper — ark-home.conf symlinks all PMs → this
-COPY pkgwrap.sh /usr/lib/ark/pkgwrap
-COPY distrobox-setup.sh /usr/lib/ark/distrobox-setup
+# Layer 7: Hostname sync
 COPY ark-hostname-sync.sh /usr/lib/ark/ark-hostname-sync
 COPY ark-hostname-sync.service /usr/lib/systemd/system/ark-hostname-sync.service
 COPY ark-hostname-sync.path /usr/lib/systemd/system/ark-hostname-sync.path
-RUN chmod +x /usr/lib/ark/pkgwrap /usr/lib/ark/distrobox-setup /usr/lib/ark/ark-hostname-sync && \
+RUN chmod +x /usr/lib/ark/ark-hostname-sync && \
     systemctl enable ark-hostname-sync.path
 
-# /usr/local → /var/usrlocal symlink (OSTree-compatible writable /usr/local)
-RUN rm -rf /usr/local && ln -sf /var/usrlocal /usr/local
+# Layer 8: pkgwrap + distrobox-setup + ark-home
+COPY pkgwrap.sh /usr/lib/ark/pkgwrap
+COPY distrobox-setup.sh /usr/lib/ark/distrobox-setup
+COPY ark-home.conf /usr/lib/tmpfiles.d/ark-home.conf
+RUN chmod +x /usr/lib/ark/pkgwrap /usr/lib/ark/distrobox-setup
 
-# Alga desktop entry for GNOME app grid
+# Layer 9: Alga wrapper + desktop entry + D-Bus + update timer
+COPY alga-wrapper.sh /usr/lib/ark/alga-wrapper
 COPY com.zamkara.alga.desktop /usr/share/applications/com.zamkara.alga.desktop
-# D-Bus service file for notification action button routing
 COPY com.zamkara.alga.service /usr/share/dbus-1/services/com.zamkara.alga.service
-
-# Alga self-update timer — checks for alga updates periodically
 COPY alga-update.service /usr/lib/systemd/system/alga-update.service
 COPY alga-update.timer /usr/lib/systemd/system/alga-update.timer
-RUN systemctl enable alga-update.timer
+RUN chmod +x /usr/lib/ark/alga-wrapper && \
+    systemctl enable alga-update.timer
+
+# Layer 10: /usr/local → /var/usrlocal symlink
+RUN rm -rf /usr/local && ln -sf /var/usrlocal /usr/local
+
+# Layer 11: Kernel + AUR packages + DKMS (variant-specific)
+COPY aur-packages/*.pkg.tar.zst /tmp/
+RUN set -e; \
+    KERNEL="linux"; \
+    if [[ "$VARIANT" == *"-zen"* ]]; then KERNEL="linux-zen"; fi; \
+    if [[ "$VARIANT" == *"-lts"* ]]; then KERNEL="linux-lts"; fi; \
+    if [[ "$VARIANT" == *"-hardened"* ]]; then KERNEL="linux-hardened"; fi; \
+    pacman -S --noconfirm $KERNEL; \
+    _pkgs=$(ls /tmp/*.pkg.tar.zst 2>/dev/null | grep -vE '/(linux|linux-zen|linux-lts|linux-hardened)-headers-[0-9]' | tr '\n' ' '); \
+    [ -n "$_pkgs" ] && pacman -U --noconfirm $_pkgs || true; \
+    pacman -U --noconfirm /tmp/${KERNEL}-headers-*.pkg.tar.zst 2>/dev/null || true; \
+    KVER=$(ls -1 /usr/lib/modules | grep -v extramodules | head -n1); \
+    dkms autoinstall -k "$KVER" 2>/dev/null || true; \
+    rm -f /tmp/*.pkg.tar.zst; \
+    pacman -Scc --noconfirm
+
+# Layer 12: Nvidia (variant-specific, must be before mkinitcpio)
+RUN set -e; \
+    if [[ "$VARIANT" == *"-nvidia"* ]]; then \
+        KERNEL="linux"; \
+        if [[ "$VARIANT" == *"-zen"* ]]; then KERNEL="linux-zen"; fi; \
+        if [[ "$VARIANT" == *"-lts"* ]]; then KERNEL="linux-lts"; fi; \
+        if [[ "$VARIANT" == *"-hardened"* ]]; then KERNEL="linux-hardened"; fi; \
+        pacman -S --noconfirm steam lib32-nvidia-utils nvtop; \
+        if [ "$KERNEL" = "linux" ]; then \
+            pacman -S --noconfirm nvidia-open nvidia-utils nvidia-settings; \
+        else \
+            pacman -S --noconfirm nvidia-open-dkms ${KERNEL}-headers dkms nvidia-utils nvidia-settings; \
+        fi; \
+        pacman -Scc --noconfirm; \
+    fi
+
+# Layer 13: mkinitcpio + initramfs cleanup
+RUN set -e; \
+    sed -i 's/^MODULES=.*/MODULES=(btrfs vfat ext4 xfs erofs overlay loop)/g' /etc/mkinitcpio.conf && \
+    sed -i 's/^HOOKS=.*/HOOKS=(base systemd microcode modconf kms keyboard sd-vconsole block sd-encrypt plymouth ostree filesystems fsck)/g' /etc/mkinitcpio.conf && \
+    mkinitcpio -P && \
+    KVER=$(ls -1 /usr/lib/modules | grep -v 'extramodules' | head -n 1) && \
+    IMG=$(ls -1 /boot/initramfs-*.img | grep -v 'fallback' | head -n 1) && \
+    cp $IMG /usr/lib/modules/$KVER/initramfs.img && \
+    rm -rf /boot/* /var/lib/pacman/sync/* /var/log/* /tmp/* /usr/share/doc/* /usr/share/man/* /usr/share/info/*
+
+# Layer 14: Remove pacman + cleanup unwanted desktop entries
+RUN rm -rf \
+        /usr/bin/pacman* \
+        /usr/bin/makepkg* \
+        /usr/bin/repo-add \
+        /usr/bin/repo-elephant \
+        /usr/bin/repo-remove \
+        /usr/bin/testpkg \
+        /usr/bin/vercmp \
+        /usr/lib/libalpm.so* \
+        /usr/include/alpm* \
+        /usr/lib/pkgconfig/libalpm.pc \
+        /usr/lib/sysusers.d/alpm.conf \
+        /usr/lib/systemd/system/sockets.target.wants/dirmngr@etc-pacman.d-gnupg.socket \
+        /usr/lib/systemd/system/sockets.target.wants/gpg-agent*@etc-pacman.d-gnupg.socket \
+        /usr/lib/systemd/system/sockets.target.wants/keyboxd@etc-pacman.d-gnupg.socket \
+        /usr/share/bash-completion/completions/pacman* \
+        /usr/share/bash-completion/completions/makepkg* \
+        /usr/share/zsh/site-functions/_pacman* \
+        /usr/share/man/man8/pacman* \
+        /usr/share/man/man8/makepkg* \
+        /usr/share/man/man8/repo-* \
+        /usr/share/man/man8/vercmp* \
+        /usr/share/man/man8/testpkg* \
+        /etc/pacman.conf \
+        /etc/pacman.d/ \
+        /var/lib/pacman/ && \
+    rm -f /usr/share/applications/{bssh,bvnc,avahi-discover,qv4l2,qvidcap,stoken-gui,stoken-gui-small,org.gnome.Extensions,org.gnome.TextEditor,lstopo,hwloc-ls,org.gnome.Logs,ibus,ibus-setup,ibus-wayland,scrcpy,scrcpy-console,veracrypt,timeshift,timeshift-gtk,org.freedesktop.MalcontentControl,nvtop}.desktop 2>/dev/null || true
