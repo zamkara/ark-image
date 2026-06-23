@@ -148,7 +148,12 @@ RUN chmod +x /usr/lib/ark/alga-wrapper
 
 # Universal package manager wrapper — ark-home.conf symlinks all PMs → this
 COPY pkgwrap.sh /usr/lib/ark/pkgwrap
-RUN chmod +x /usr/lib/ark/pkgwrap
+COPY distrobox-setup.sh /usr/lib/ark/distrobox-setup
+COPY ark-hostname-sync.sh /usr/lib/ark/ark-hostname-sync
+COPY ark-hostname-sync.service /usr/lib/systemd/system/ark-hostname-sync.service
+COPY ark-hostname-sync.path /usr/lib/systemd/system/ark-hostname-sync.path
+RUN chmod +x /usr/lib/ark/pkgwrap /usr/lib/ark/distrobox-setup /usr/lib/ark/ark-hostname-sync && \
+    systemctl enable ark-hostname-sync.path
 
 # /usr/local → /var/usrlocal symlink (OSTree-compatible writable /usr/local)
 RUN rm -rf /usr/local && ln -sf /var/usrlocal /usr/local

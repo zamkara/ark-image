@@ -1,5 +1,6 @@
 #!/bin/bash
 if ! podman container exists archlinux 2>/dev/null; then
-    distrobox create --image ghcr.io/archlinux/archlinux:latest --name archlinux --no-entry --yes >/dev/null 2>&1
+    distrobox create --image ghcr.io/archlinux/archlinux:latest --name archlinux --no-entry --yes \
+        --post-init-hooks "bash /run/host/usr/lib/ark/distrobox-setup"
 fi
 exec distrobox enter archlinux

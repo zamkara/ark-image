@@ -5,13 +5,16 @@
 
 declare -A PM_IMAGE=(
     [pacman]="ghcr.io/archlinux/archlinux:latest"
-    [apt]="docker.io/library/debian:latest"
-    [apt-get]="docker.io/library/debian:latest"
+    [apt]="docker.io/library/debian:sid"
+    [apt-get]="docker.io/library/debian:sid"
     [dnf]="docker.io/library/fedora:latest"
     [yum]="docker.io/library/fedora:latest"
     [zypper]="docker.io/opensuse/tumbleweed:latest"
-    [apk]="docker.io/library/alpine:latest"
+    [apk]="docker.io/library/alpine:edge"
     [emerge]="docker.io/gentoo/stage3:latest"
+    [nix]="docker.io/nixos/nix:latest"
+    [nix-env]="docker.io/nixos/nix:latest"
+    [xbps-install]="ghcr.io/void-linux/void-musl-full:latest"
 )
 
 declare -A PM_CONTAINER=(
@@ -23,6 +26,9 @@ declare -A PM_CONTAINER=(
     [zypper]="opensuse"
     [apk]="alpine"
     [emerge]="gentoo"
+    [nix]="nixos"
+    [nix-env]="nixos"
+    [xbps-install]="void"
 )
 
 PM=$(basename "$0")
@@ -34,14 +40,22 @@ if [ -z "$IMAGE" ]; then
     exit 1
 fi
 
+# If invoked via sudo, run podman as the real user, not root
+PODMAN="podman"
+DISTROBOX="distrobox"
+if [ -n "$SUDO_USER" ]; then
+    PODMAN="runuser -u $SUDO_USER -- podman"
+    DISTROBOX="runuser -u $SUDO_USER -- distrobox"
+fi
+
 run_pm() {
-    podman start "$CONTAINER" >/dev/null 2>&1
+    $PODMAN start "$CONTAINER" >/dev/null 2>&1
     local flags=-i
     [ -t 1 ] && flags=-it
-    exec podman exec --user root "$flags" "$CONTAINER" "$PM" "$@"
+    exec $PODMAN exec --user root "$flags" "$CONTAINER" "$PM" "$@"
 }
 
-if podman container exists "$CONTAINER" 2>/dev/null; then
+if $PODMAN container exists "$CONTAINER" 2>/dev/null; then
     run_pm "$@"
 fi
 
@@ -54,5 +68,6 @@ if [ -t 0 ]; then
 fi
 
 echo "Creating container '$CONTAINER', downloading image..."
-distrobox create --image "$IMAGE" --name "$CONTAINER" --no-entry --yes >/dev/null 2>&1
+$DISTROBOX create --image "$IMAGE" --name "$CONTAINER" --no-entry --yes \
+    --post-init-hooks "bash /run/host/usr/lib/ark/distrobox-setup"
 run_pm "$@"
