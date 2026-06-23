@@ -20,7 +20,7 @@ RUN set -e; \
         flatpak gnome-initial-setup \
         webp-pixbuf-loader libheif libavif libraw ffmpegthumbnailer poppler-glib libgsf \
         util-linux openssl efibootmgr dosfstools e2fsprogs xfsprogs ostree skopeo \
-        btrfs-progs podman composefs ibus iso-codes shadow sudo git nano zsh fish bootupd; \
+        btrfs-progs podman composefs ibus iso-codes shadow sudo git nano zsh fish; \
     sed -i 's/^#\(.*UTF-8.*\)/\1/' /etc/locale.gen; \
     locale-gen; \
     echo "LANG=en_US.UTF-8" > /etc/locale.conf; \
@@ -38,7 +38,7 @@ RUN systemctl enable gdm NetworkManager && \
     glib-compile-schemas /usr/share/glib-2.0/schemas/
 
 # Layer 3: bootupd + home/root symlinks
-RUN chmod +x /usr/libexec/bootupd /usr/bin/bootupctl && \
+RUN [ -f /usr/libexec/bootupd ] && chmod +x /usr/libexec/bootupd /usr/bin/bootupctl || true; \
     rm -rf /home /root && \
     ln -sf var/home /home && \
     ln -sf var/roothome /root
