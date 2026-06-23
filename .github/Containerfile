@@ -119,6 +119,7 @@ RUN set -e; \
     pacman -Scc --noconfirm; \
     systemd-sysusers; \
     systemd-tmpfiles --create; \
+    mkdir -p /nix/var; \
     rm -rf /nix/var/nix; \
     ln -sf /var/nix /nix/var/nix; \
     echo "experimental-features = nix-command flakes" >> /etc/nix/nix.conf; \
