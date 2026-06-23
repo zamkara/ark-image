@@ -20,7 +20,7 @@ RUN set -e; \
         flatpak gnome-initial-setup \
         webp-pixbuf-loader libheif libavif libraw ffmpegthumbnailer poppler-glib libgsf \
         util-linux openssl efibootmgr dosfstools e2fsprogs xfsprogs ostree skopeo \
-        btrfs-progs podman composefs ibus iso-codes shadow sudo git nano zsh fish; \
+        btrfs-progs podman composefs ibus iso-codes shadow sudo git nano zsh fish bootupd; \
     sed -i 's/^#\(.*UTF-8.*\)/\1/' /etc/locale.gen; \
     locale-gen; \
     echo "LANG=en_US.UTF-8" > /etc/locale.conf; \
@@ -101,13 +101,27 @@ RUN rm -rf /usr/local && ln -sf /var/usrlocal /usr/local
 COPY aur-packages/*.pkg.tar.zst /tmp/
 RUN set -e; \
     KERNEL="linux"; \
-    if [[ "$VARIANT" == *"-zen"* ]]; then KERNEL="linux-zen"; fi; \
-    if [[ "$VARIANT" == *"-lts"* ]]; then KERNEL="linux-lts"; fi; \
-    if [[ "$VARIANT" == *"-hardened"* ]]; then KERNEL="linux-hardened"; fi; \
-    pacman -S --noconfirm $KERNEL; \
+    CACHY_KERNEL=""; \
+    if [[ "$VARIANT" == *"-apex"* ]]; then \
+        CACHY_KERNEL="linux-cachyos"; \
+        if [[ "$VARIANT" == *"-bore"* ]]; then CACHY_KERNEL="linux-cachyos-bore"; fi; \
+        if [[ "$VARIANT" == *"-lts"* ]]; then CACHY_KERNEL="linux-cachyos-lts"; fi; \
+        if [[ "$VARIANT" == *"-hardened"* ]]; then CACHY_KERNEL="linux-cachyos-hardened"; fi; \
+        printf '\n[cachyos]\nSigLevel = Never\nServer = https://mirror.cachyos.org/repo/$arch/$repo\n' >> /etc/pacman.conf; \
+        pacman -Sy --noconfirm cachyos-keyring; \
+        pacman-key --populate cachyos; \
+        sed -i '/SigLevel = Never/d' /etc/pacman.conf; \
+        pacman -Sy --noconfirm; \
+        pacman -S --noconfirm $CACHY_KERNEL ${CACHY_KERNEL}-headers; \
+    else \
+        if [[ "$VARIANT" == *"-zen"* ]]; then KERNEL="linux-zen"; fi; \
+        if [[ "$VARIANT" == *"-lts"* ]]; then KERNEL="linux-lts"; fi; \
+        if [[ "$VARIANT" == *"-hardened"* ]]; then KERNEL="linux-hardened"; fi; \
+        pacman -S --noconfirm $KERNEL; \
+        pacman -U --noconfirm /tmp/${KERNEL}-headers-*.pkg.tar.zst 2>/dev/null || true; \
+    fi; \
     _pkgs=$(ls /tmp/*.pkg.tar.zst 2>/dev/null | grep -vE '/(linux|linux-zen|linux-lts|linux-hardened)-headers-[0-9]' | tr '\n' ' '); \
     [ -n "$_pkgs" ] && pacman -U --noconfirm $_pkgs || true; \
-    pacman -U --noconfirm /tmp/${KERNEL}-headers-*.pkg.tar.zst 2>/dev/null || true; \
     KVER=$(ls -1 /usr/lib/modules | grep -v extramodules | head -n1); \
     dkms autoinstall -k "$KVER" 2>/dev/null || true; \
     rm -f /tmp/*.pkg.tar.zst; \
@@ -116,15 +130,23 @@ RUN set -e; \
 # Layer 12: Nvidia (variant-specific, must be before mkinitcpio)
 RUN set -e; \
     if [[ "$VARIANT" == *"-nvidia"* ]]; then \
-        KERNEL="linux"; \
-        if [[ "$VARIANT" == *"-zen"* ]]; then KERNEL="linux-zen"; fi; \
-        if [[ "$VARIANT" == *"-lts"* ]]; then KERNEL="linux-lts"; fi; \
-        if [[ "$VARIANT" == *"-hardened"* ]]; then KERNEL="linux-hardened"; fi; \
         pacman -S --noconfirm steam lib32-nvidia-utils nvtop; \
-        if [ "$KERNEL" = "linux" ]; then \
-            pacman -S --noconfirm nvidia-open nvidia-utils nvidia-settings; \
+        if [[ "$VARIANT" == *"-apex"* ]]; then \
+            CACHY_KERNEL="linux-cachyos"; \
+            if [[ "$VARIANT" == *"-bore"* ]]; then CACHY_KERNEL="linux-cachyos-bore"; fi; \
+            if [[ "$VARIANT" == *"-lts"* ]]; then CACHY_KERNEL="linux-cachyos-lts"; fi; \
+            if [[ "$VARIANT" == *"-hardened"* ]]; then CACHY_KERNEL="linux-cachyos-hardened"; fi; \
+            pacman -S --noconfirm ${CACHY_KERNEL}-nvidia-open nvidia-utils nvidia-settings; \
         else \
-            pacman -S --noconfirm nvidia-open-dkms ${KERNEL}-headers dkms nvidia-utils nvidia-settings; \
+            KERNEL="linux"; \
+            if [[ "$VARIANT" == *"-zen"* ]]; then KERNEL="linux-zen"; fi; \
+            if [[ "$VARIANT" == *"-lts"* ]]; then KERNEL="linux-lts"; fi; \
+            if [[ "$VARIANT" == *"-hardened"* ]]; then KERNEL="linux-hardened"; fi; \
+            if [ "$KERNEL" = "linux" ]; then \
+                pacman -S --noconfirm nvidia-open nvidia-utils nvidia-settings; \
+            else \
+                pacman -S --noconfirm nvidia-open-dkms ${KERNEL}-headers dkms nvidia-utils nvidia-settings; \
+            fi; \
         fi; \
         pacman -Scc --noconfirm; \
     fi
