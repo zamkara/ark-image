@@ -43,17 +43,8 @@ RUN [ -f /usr/libexec/bootupd ] && chmod +x /usr/libexec/bootupd /usr/bin/bootup
     ln -sf var/home /home && \
     ln -sf var/roothome /root
 
-# Layer 4: Nix setup
-RUN set -e; \
-    mkdir -p /var/nix; \
-    rm -rf /nix/var/nix; \
-    ln -sf /var/nix /nix/var/nix; \
-    systemd-sysusers; \
-    systemd-tmpfiles --create; \
-    echo "experimental-features = nix-command flakes" >> /etc/nix/nix.conf; \
-    echo "trusted-users = root @wheel" >> /etc/nix/nix.conf; \
-    echo "extra-nix-path = nixpkgs=channel:nixpkgs-unstable" >> /etc/nix/nix.conf; \
-    systemctl enable nix-daemon.socket nix-daemon.service
+# Layer 4: Prepare /var/nix (nix subvolume target; nix itself installed in Layer 11 from AUR)
+RUN mkdir -p /var/nix
 
 # Layer 5: BLS sync
 COPY bls-sync.sh /usr/libexec/ark/bls-sync.sh
@@ -125,7 +116,15 @@ RUN set -e; \
     KVER=$(ls -1 /usr/lib/modules | grep -v extramodules | head -n1); \
     dkms autoinstall -k "$KVER" 2>/dev/null || true; \
     rm -f /tmp/*.pkg.tar.zst; \
-    pacman -Scc --noconfirm
+    pacman -Scc --noconfirm; \
+    systemd-sysusers; \
+    systemd-tmpfiles --create; \
+    rm -rf /nix/var/nix; \
+    ln -sf /var/nix /nix/var/nix; \
+    echo "experimental-features = nix-command flakes" >> /etc/nix/nix.conf; \
+    echo "trusted-users = root @wheel" >> /etc/nix/nix.conf; \
+    echo "extra-nix-path = nixpkgs=channel:nixpkgs-unstable" >> /etc/nix/nix.conf; \
+    systemctl enable nix-daemon.socket nix-daemon.service
 
 # Layer 12: Nvidia (variant-specific, must be before mkinitcpio)
 RUN set -e; \
