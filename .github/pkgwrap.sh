@@ -11,7 +11,7 @@ IMAGE_MAP[apt-get]="docker.io/library/debian:sid"
 IMAGE_MAP[dnf]="docker.io/library/fedora:rawhide"
 IMAGE_MAP[yum]="docker.io/library/fedora:rawhide"
 IMAGE_MAP[zypper]="docker.io/opensuse/tumbleweed:latest"
-IMAGE_MAP[apk]="docker.io/library/alpine:edge"
+IMAGE_MAP[apk]="docker.io/library/alpine:latest"
 IMAGE_MAP[emerge]="docker.io/gentoo/stage3:latest"
 IMAGE_MAP[nix]="docker.io/nixos/nix:latest"
 IMAGE_MAP[nix-env]="docker.io/nixos/nix:latest"
@@ -133,7 +133,10 @@ ensure_container() {
         create_args+=(--additional-flags "--env DEBIAN_FRONTEND=noninteractive")
     fi
 
-    spin_run "preparing container environment" run_as_user distrobox create "${create_args[@]}"
+    if ! spin_run "preparing container environment" run_as_user distrobox create "${create_args[@]}"; then
+        echo -e "  ${RED}container init failed — distrobox logs above may have details${RESET}" >&2
+        exit 1
+    fi
     CREATED_CONTAINER=true
 }
 
