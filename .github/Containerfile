@@ -54,14 +54,10 @@ COPY ark-bls-sync.service /usr/lib/systemd/system/ark-bls-sync.service
 RUN chmod +x /usr/libexec/ark/bls-sync.sh && \
     systemctl enable ark-bls-sync.service
 
-# Layer 6: Orundum + arkgate
-COPY arkgate /usr/lib/ark/arkgate
+# Layer 6: Orundum (container storage subvolume)
 COPY ark-orundum.conf /usr/lib/tmpfiles.d/ark-orundum.conf
 RUN mkdir -p /orundum /etc/skel/.local/share && \
-    ln -sfn /orundum/containers /etc/skel/.local/share/containers && \
-    chmod +x /usr/lib/ark/arkgate && \
-    sed -i '0,/^Exec=kgx$/s|^Exec=kgx$|Exec=kgx -- /usr/lib/ark/arkgate|' /usr/share/applications/org.gnome.Console.desktop && \
-    sed -i 's/^DBusActivatable=true/DBusActivatable=false/' /usr/share/applications/org.gnome.Console.desktop
+    ln -sfn /orundum/containers /etc/skel/.local/share/containers
 
 # Layer 7: Hostname sync
 COPY ark-hostname-sync.sh /usr/lib/ark/ark-hostname-sync
@@ -70,11 +66,20 @@ COPY ark-hostname-sync.path /usr/lib/systemd/system/ark-hostname-sync.path
 RUN chmod +x /usr/lib/ark/ark-hostname-sync && \
     systemctl enable ark-hostname-sync.path
 
-# Layer 8: pkgwrap + distrobox-setup + ark-home
+# Layer 8: pkgwrap + distrobox-setup + PM symlinks + ark-home
 COPY pkgwrap.sh /usr/lib/ark/pkgwrap
 COPY distrobox-setup.sh /usr/lib/ark/distrobox-setup
 COPY ark-home.conf /usr/lib/tmpfiles.d/ark-home.conf
-RUN chmod +x /usr/lib/ark/pkgwrap /usr/lib/ark/distrobox-setup
+RUN chmod +x /usr/lib/ark/pkgwrap /usr/lib/ark/distrobox-setup && \
+    ln -sf /usr/lib/ark/pkgwrap /usr/local/bin/pacman && \
+    ln -sf /usr/lib/ark/pkgwrap /usr/local/bin/apt-get && \
+    ln -sf /usr/lib/ark/pkgwrap /usr/local/bin/apt && \
+    ln -sf /usr/lib/ark/pkgwrap /usr/local/bin/dnf && \
+    ln -sf /usr/lib/ark/pkgwrap /usr/local/bin/yum && \
+    ln -sf /usr/lib/ark/pkgwrap /usr/local/bin/zypper && \
+    ln -sf /usr/lib/ark/pkgwrap /usr/local/bin/apk && \
+    ln -sf /usr/lib/ark/pkgwrap /usr/local/bin/emerge && \
+    ln -sf /usr/lib/ark/pkgwrap /usr/local/bin/xbps-install
 
 # Layer 9: Alga wrapper + desktop entry + D-Bus + update timer
 COPY alga-wrapper.sh /usr/lib/ark/alga-wrapper
