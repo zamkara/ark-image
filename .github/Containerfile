@@ -118,8 +118,8 @@ RUN set -e; \
     dkms autoinstall -k "$KVER" 2>/dev/null || true; \
     rm -f /tmp/*.pkg.tar.zst; \
     pacman -Scc --noconfirm; \
+    rm -f /var/usrlocal/bin/pacman; \
     systemd-sysusers; \
-    systemd-tmpfiles --create; \
     mkdir -p /nix/var /etc/nix; \
     rm -rf /nix/var/nix; \
     ln -sf /var/nix /nix/var/nix; \
