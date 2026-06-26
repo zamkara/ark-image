@@ -95,8 +95,10 @@ RUN chmod +x /usr/lib/ark/alga-wrapper && \
 RUN rm -rf /usr/local && ln -sf /var/usrlocal /usr/local
 
 # Layer 11: Kernel + AUR packages + DKMS (variant-specific)
-COPY aur-packages/*.pkg.tar.zst /tmp/
-RUN set -e; \
+ARG AUR_SHA=unknown
+RUN --mount=type=bind,source=aur-packages,target=/tmp/aur-packages \
+    set -e; \
+    echo "AUR SHA: ${AUR_SHA}"; \
     KERNEL="linux"; \
     CACHY_KERNEL=""; \
     if [[ "$VARIANT" == *"-apex"* ]]; then \
@@ -116,14 +118,13 @@ RUN set -e; \
         if [[ "$VARIANT" == *"-lts"* ]]; then KERNEL="linux-lts"; fi; \
         if [[ "$VARIANT" == *"-hardened"* ]]; then KERNEL="linux-hardened"; fi; \
         pacman -S --noconfirm $KERNEL; \
-        pacman -U --noconfirm /tmp/${KERNEL}-headers-*.pkg.tar.zst 2>/dev/null || true; \
+        pacman -U --noconfirm /tmp/aur-packages/${KERNEL}-headers-*.pkg.tar.zst 2>/dev/null || true; \
     fi; \
-    _pkgs=$(ls /tmp/*.pkg.tar.zst 2>/dev/null | grep -vE '/(linux|linux-zen|linux-lts|linux-hardened)-headers-[0-9]' | tr '\n' ' '); \
+    _pkgs=$(ls /tmp/aur-packages/*.pkg.tar.zst 2>/dev/null | grep -vE '/(linux|linux-zen|linux-lts|linux-hardened)-headers-[0-9]' | tr '\n' ' '); \
     [ -n "$_pkgs" ] && pacman -U --noconfirm --overwrite '*' $_pkgs || true; \
     locale-gen; \
     KVER=$(ls -1 /usr/lib/modules | grep -v extramodules | head -n1); \
     dkms autoinstall -k "$KVER" 2>/dev/null || true; \
-    rm -f /tmp/*.pkg.tar.zst; \
     pacman -Scc --noconfirm; \
     rm -f /var/usrlocal/bin/pacman; \
     systemd-sysusers; \

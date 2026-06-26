@@ -254,7 +254,7 @@ jobs:
         run: mkdir -p .github/pacman-cache
       - name: Build custom ark image with bootupd
         run: |
-          sudo podman build -v $(pwd)/.github/pacman-cache:/var/cache/pacman/pkg --build-arg VARIANT=${{ matrix.variant }} -t ghcr.io/${{ github.repository }}:${{ matrix.variant }} -f .github/Containerfile .github/
+          sudo podman build -v $(pwd)/.github/pacman-cache:/var/cache/pacman/pkg --build-arg AUR_SHA=${{ needs.check-digest.outputs.aur-sha }} --build-arg VARIANT=${{ matrix.variant }} -t ghcr.io/${{ github.repository }}:${{ matrix.variant }} -f .github/Containerfile .github/
           sudo chown -R $USER:$USER .github/pacman-cache/
       - name: Log in to the Container registry
         run: echo "${{ secrets.GITHUB_TOKEN }}" | sudo podman login ghcr.io -u ${{ github.actor }} --password-stdin
