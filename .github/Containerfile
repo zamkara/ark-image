@@ -25,6 +25,7 @@ RUN set -e; \
     echo "LANG=en_US.UTF-8" > /etc/locale.conf; \
     ln -sf /usr/share/zoneinfo/UTC /etc/localtime; \
     chmod u+s /usr/bin/newuidmap /usr/bin/newgidmap; \
+    echo "arklinux" > /etc/hostname; \
     pacman -Scc --noconfirm
 
 # Layer 2: OSTree sysroot + systemd services
