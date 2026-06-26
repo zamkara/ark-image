@@ -6,10 +6,10 @@ PM=$(basename "$0")
 # ── Configuration ─────────────────────────────────────────────────────────────
 declare -A IMAGE_MAP
 IMAGE_MAP[pacman]="ghcr.io/archlinux/archlinux:latest"
-IMAGE_MAP[apt]="docker.io/library/debian:sid"
-IMAGE_MAP[apt-get]="docker.io/library/debian:sid"
-IMAGE_MAP[dnf]="docker.io/library/fedora:rawhide"
-IMAGE_MAP[yum]="docker.io/library/fedora:rawhide"
+IMAGE_MAP[apt]="docker.io/library/debian:latest"
+IMAGE_MAP[apt-get]="docker.io/library/debian:latest"
+IMAGE_MAP[dnf]="docker.io/library/fedora:latest"
+IMAGE_MAP[yum]="docker.io/library/fedora:latest"
 IMAGE_MAP[zypper]="docker.io/opensuse/tumbleweed:latest"
 IMAGE_MAP[apk]="docker.io/library/alpine:latest"
 IMAGE_MAP[emerge]="docker.io/gentoo/stage3:latest"
@@ -108,19 +108,6 @@ ensure_container() {
         return 0
     fi
 
-    echo -e "container not found: ${CYAN}$CONTAINER${RESET} (${IMAGE})"
-
-    if [ -z "${DBX_NON_INTERACTIVE:-}" ] && [ -t 0 ]; then
-        read -p "Create? [Y/n] " -r
-    else
-        REPLY=y
-    fi
-
-    if [[ ! $REPLY =~ ^[Yy]$ ]] && [ -n "$REPLY" ]; then
-        echo -e "aborted"
-        exit 1
-    fi
-
     local create_args=(
         --image "$IMAGE"
         --name "$CONTAINER"
@@ -133,8 +120,25 @@ ensure_container() {
         create_args+=(--additional-flags "--env DEBIAN_FRONTEND=noninteractive")
     fi
 
-    if ! spin_run "preparing container environment" run_as_user distrobox create "${create_args[@]}"; then
+    local runtime=""
+    if   command -v podman &>/dev/null; then runtime=podman
+    elif command -v docker &>/dev/null; then runtime=docker
+    fi
+
+    if [ -n "$runtime" ]; then
+        if ! run_as_user "$runtime" image exists "$IMAGE" 2>/dev/null; then
+            spin_run "pulling image" run_as_user "$runtime" pull "$IMAGE"
+        fi
+    fi
+
+    if ! spin_run "preparing container" run_as_user distrobox create "${create_args[@]}"; then
         echo -e "  ${RED}container init failed — distrobox logs above may have details${RESET}" >&2
+        exit 1
+    fi
+
+    if ! spin_run "initializing container" run_as_user distrobox enter "$CONTAINER" -- true; then
+        echo -e "  ${RED}container initialization failed — distrobox may need updated packages${RESET}" >&2
+        run_as_user distrobox rm --force "$CONTAINER" 2>/dev/null || true
         exit 1
     fi
     CREATED_CONTAINER=true
@@ -342,25 +346,88 @@ extract_packages() {
     extract_pkg_names "install" "$@"
 }
 
+# ── File resolution ──────────────────────────────────────────────────────────
+# Query the package manager inside the container for files owned by a package.
+list_pkg_files() {
+    local pkg=$1
+    case "$PM" in
+        dnf|yum|zypper)
+            run_as_user distrobox enter -n "$CONTAINER" -- rpm -ql "$pkg" 2>/dev/null ;;
+        apt|apt-get)
+            run_as_user distrobox enter -n "$CONTAINER" -- dpkg -L "$pkg" 2>/dev/null ;;
+        pacman)
+            run_as_user distrobox enter -n "$CONTAINER" -- pacman -Qlq "$pkg" 2>/dev/null ;;
+        apk)
+            run_as_user distrobox enter -n "$CONTAINER" -- apk info -L "$pkg" 2>/dev/null ;;
+        xbps-install)
+            run_as_user distrobox enter -n "$CONTAINER" -- xbps-query -f "$pkg" 2>/dev/null ;;
+        emerge)
+            run_as_user distrobox enter -n "$CONTAINER" -- equery files "$pkg" 2>/dev/null ;;
+        *)
+            ;;
+    esac
+}
+
+# Full paths to .desktop files owned by $pkg (one per line).
+resolve_desktop_paths() {
+    local pkg=$1
+    list_pkg_files "$pkg" | grep -E '/applications/.*\.desktop$'
+}
+
+# Desktop-file IDs (basename, no .desktop) for host-side filename matching.
+resolve_desktop_ids() {
+    local pkg=$1
+    resolve_desktop_paths "$pkg" | sed -E 's#.*/##; s#\.desktop$##'
+}
+
+# Full paths to binaries (under /usr/bin/ or /bin/) owned by $pkg.
+resolve_bin_paths() {
+    local pkg=$1
+    list_pkg_files "$pkg" | grep -E '^/(usr/)?bin/'
+}
+
 prompt_export() {
     local pkg=$1 reply succeeded=false
+    local desktop_paths=() desktop_ids=() bin_paths=() path
+
+    mapfile -t desktop_paths < <(resolve_desktop_paths "$pkg")
+    mapfile -t desktop_ids < <(resolve_desktop_ids "$pkg")
+    mapfile -t bin_paths < <(resolve_bin_paths "$pkg")
 
     echo
     echo "Export '$pkg'?"
     echo -e "[${RED}N${RESET}] Nope  [${GREEN}A${RESET}] App  [${GREEN}B${RESET}] Only Binary executable"
     read -n1 -s -r reply
     echo
-    [ -t 1 ] && clear
+    :
     case "$reply" in
         [Aa]*)
-            if run_as_user distrobox enter "$CONTAINER" -- distrobox-export --app "$pkg" >/dev/null 2>/dev/null; then
+            for path in "${desktop_paths[@]}"; do
+                if run_as_user distrobox enter "$CONTAINER" -- distrobox-export --app "$path" >/dev/null 2>/dev/null; then
+                    succeeded=true
+                fi
+            done
+            if ! $succeeded && run_as_user distrobox enter "$CONTAINER" -- distrobox-export --app "$pkg" >/dev/null 2>/dev/null; then
                 succeeded=true
-            elif run_as_user distrobox enter "$CONTAINER" -- distrobox-export --bin "/usr/bin/$pkg" >/dev/null 2>/dev/null; then
+            fi
+            if ! $succeeded; then
+                for path in "${bin_paths[@]}"; do
+                    if run_as_user distrobox enter "$CONTAINER" -- distrobox-export --bin "$path" >/dev/null 2>/dev/null; then
+                        succeeded=true
+                    fi
+                done
+            fi
+            if ! $succeeded && run_as_user distrobox enter "$CONTAINER" -- distrobox-export --bin "/usr/bin/$pkg" >/dev/null 2>/dev/null; then
                 succeeded=true
             fi
             ;;
         [Bb]*)
-            if run_as_user distrobox enter "$CONTAINER" -- distrobox-export --bin "/usr/bin/$pkg" >/dev/null 2>/dev/null; then
+            for path in "${bin_paths[@]}"; do
+                if run_as_user distrobox enter "$CONTAINER" -- distrobox-export --bin "$path" >/dev/null 2>/dev/null; then
+                    succeeded=true
+                fi
+            done
+            if ! $succeeded && run_as_user distrobox enter "$CONTAINER" -- distrobox-export --bin "/usr/bin/$pkg" >/dev/null 2>/dev/null; then
                 succeeded=true
             fi
             ;;
@@ -376,77 +443,64 @@ prompt_export() {
 
 prompt_cleanup() {
     local pkg=$1
-    local reply
+    local desktop_paths=() desktop_ids=() bin_paths=() path
 
-    echo
-    echo "Cleanup '$pkg'?"
-    echo -e "[${RED}N${RESET}] Nope  [${GREEN}Y${RESET}] Yes, delete exported files"
-    read -n1 -s -r reply
-    echo
-    [ -t 1 ] && clear
+    mapfile -t desktop_paths < <(resolve_desktop_paths "$pkg")
+    mapfile -t desktop_ids < <(resolve_desktop_ids "$pkg")
+    mapfile -t bin_paths < <(resolve_bin_paths "$pkg")
 
-    case "$reply" in
-        [Yy]) ;;
-        *) echo "skipped"; return ;;
-    esac
-
-    # Try distrobox-export --delete first, then force-remove host files
+    for path in "${desktop_paths[@]}"; do
+        run_as_user distrobox enter -n "$CONTAINER" -- distrobox-export --app "$path" -d >/dev/null 2>/dev/null || true
+    done
     run_as_user distrobox enter -n "$CONTAINER" -- distrobox-export --app "$pkg" -d >/dev/null 2>/dev/null || true
+    for path in "${bin_paths[@]}"; do
+        run_as_user distrobox enter -n "$CONTAINER" -- distrobox-export --bin "$path" -d >/dev/null 2>/dev/null || true
+    done
     run_as_user distrobox enter -n "$CONTAINER" -- distrobox-export --bin "/usr/bin/$pkg" -d >/dev/null 2>/dev/null || true
-    run_as_user bash -c 'rm -f "$HOME/.local/share/applications/$1-$2".desktop' _ "$CONTAINER" "$pkg" >/dev/null 2>/dev/null || true
+
+    # Force-remove leftover host-side desktop files for this container.
+    run_as_user bash -c '
+        home="$1"; container="$2"; pkg="$3"; shift 3
+        appdir="$home/.local/share/applications"
+        for id in "$@"; do
+            rm -f "$appdir/${container}-${id}.desktop"
+        done
+        for f in "$appdir/${container}-"*"${pkg}"*.desktop; do
+            [ -e "$f" ] && rm -f "$f"
+        done
+    ' _ "$HOME" "$CONTAINER" "$pkg" "${desktop_ids[@]}" >/dev/null 2>/dev/null || true
+
     echo -e "${GREEN}✔${RESET} cleaned $pkg"
 }
 
 # ── Main ──────────────────────────────────────────────────────────────────────
 ensure_container
 
-if $CREATED_CONTAINER && [ -t 1 ]; then
-    clear
+op=$(detect_op "$PM" "$@")
+
+# For remove: delete desktop files BEFORE package removal, while they're
+# still available inside the container for resolve_desktop_ids.
+if [[ "$op" == "remove" ]]; then
+    mapfile -t packages < <(extract_pkg_names "remove" "$@")
+    for pkg in "${packages[@]}"; do
+        prompt_cleanup "$pkg"
+    done
 fi
 
 run_as_user distrobox enter "$CONTAINER" -- sudo -E "$PM" "$@"
 rc=$?
 
-if [ $rc -eq 0 ]; then
-    op=$(detect_op "$PM" "$@")
-    if [[ "$op" == "install" ]]; then
-        mapfile -t packages < <(extract_pkg_names "install" "$@")
-        if [ ${#packages[@]} -gt 0 ] && [ -t 1 ]; then
-            echo -e "${GREEN}✔${RESET} done"
-            [ -t 1 ] && clear
-            i=0
-            total=${#packages[@]}
-            for pkg in "${packages[@]}"; do
-                prompt_export "$pkg"
-                i=$((i + 1))
-                if [ $i -lt $total ] && [ -t 1 ]; then
-                    clear
-                fi
-            done
-        elif [ ${#packages[@]} -gt 0 ]; then
-            for pkg in "${packages[@]}"; do
-                prompt_export "$pkg"
-            done
-        fi
-    elif [[ "$op" == "remove" ]]; then
-        mapfile -t packages < <(extract_pkg_names "remove" "$@")
-        if [ ${#packages[@]} -gt 0 ] && [ -t 1 ]; then
-            echo -e "${GREEN}✔${RESET} done"
-            [ -t 1 ] && clear
-            i=0
-            total=${#packages[@]}
-            for pkg in "${packages[@]}"; do
-                prompt_cleanup "$pkg"
-                i=$((i + 1))
-                if [ $i -lt $total ] && [ -t 1 ]; then
-                    clear
-                fi
-            done
-        elif [ ${#packages[@]} -gt 0 ]; then
-            for pkg in "${packages[@]}"; do
-                prompt_cleanup "$pkg"
-            done
-        fi
+if [ $rc -eq 0 ] && [[ "$op" == "install" ]]; then
+    mapfile -t packages < <(extract_pkg_names "install" "$@")
+    if [ ${#packages[@]} -gt 0 ] && [ -t 1 ]; then
+        echo -e "${GREEN}✔${RESET} done"
+        for pkg in "${packages[@]}"; do
+            prompt_export "$pkg"
+        done
+    elif [ ${#packages[@]} -gt 0 ]; then
+        for pkg in "${packages[@]}"; do
+            prompt_export "$pkg"
+        done
     fi
 fi
 
