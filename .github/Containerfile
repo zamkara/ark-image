@@ -22,7 +22,6 @@ RUN set -e; \
         util-linux openssl efibootmgr dosfstools e2fsprogs xfsprogs ostree skopeo \
         btrfs-progs podman composefs ibus iso-codes shadow sudo git nano zsh fish; \
     sed -i 's/^#\(.*UTF-8.*\)/\1/' /etc/locale.gen; \
-    locale-gen; \
     echo "LANG=en_US.UTF-8" > /etc/locale.conf; \
     ln -sf /usr/share/zoneinfo/UTC /etc/localtime; \
     chmod u+s /usr/bin/newuidmap /usr/bin/newgidmap; \
@@ -121,6 +120,7 @@ RUN set -e; \
     fi; \
     _pkgs=$(ls /tmp/*.pkg.tar.zst 2>/dev/null | grep -vE '/(linux|linux-zen|linux-lts|linux-hardened)-headers-[0-9]' | tr '\n' ' '); \
     [ -n "$_pkgs" ] && pacman -U --noconfirm --overwrite '*' $_pkgs || true; \
+    locale-gen; \
     KVER=$(ls -1 /usr/lib/modules | grep -v extramodules | head -n1); \
     dkms autoinstall -k "$KVER" 2>/dev/null || true; \
     rm -f /tmp/*.pkg.tar.zst; \
