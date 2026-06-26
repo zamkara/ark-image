@@ -66,20 +66,22 @@ COPY ark-hostname-sync.path /usr/lib/systemd/system/ark-hostname-sync.path
 RUN chmod +x /usr/lib/ark/ark-hostname-sync && \
     systemctl enable ark-hostname-sync.path
 
-# Layer 8: pkgwrap + distrobox-setup + PM symlinks + ark-home
-COPY pkgwrap.sh /usr/lib/ark/pkgwrap
-COPY distrobox-setup.sh /usr/lib/ark/distrobox-setup
+# Layer 8: carrier + PM symlinks + ark-home
+RUN curl -sL "https://github.com/zamkara/carrier-pkg/releases/latest/download/carrier" \
+    -o /usr/lib/ark/carrier && \
+    chmod +x /usr/lib/ark/carrier
 COPY ark-home.conf /usr/lib/tmpfiles.d/ark-home.conf
-RUN chmod +x /usr/lib/ark/pkgwrap /usr/lib/ark/distrobox-setup && \
-    ln -sf /usr/lib/ark/pkgwrap /usr/local/bin/pacman && \
-    ln -sf /usr/lib/ark/pkgwrap /usr/local/bin/apt-get && \
-    ln -sf /usr/lib/ark/pkgwrap /usr/local/bin/apt && \
-    ln -sf /usr/lib/ark/pkgwrap /usr/local/bin/dnf && \
-    ln -sf /usr/lib/ark/pkgwrap /usr/local/bin/yum && \
-    ln -sf /usr/lib/ark/pkgwrap /usr/local/bin/zypper && \
-    ln -sf /usr/lib/ark/pkgwrap /usr/local/bin/apk && \
-    ln -sf /usr/lib/ark/pkgwrap /usr/local/bin/emerge && \
-    ln -sf /usr/lib/ark/pkgwrap /usr/local/bin/xbps-install
+RUN ln -sf /usr/lib/ark/carrier /usr/local/bin/pacman && \
+    ln -sf /usr/lib/ark/carrier /usr/local/bin/apt-get && \
+    ln -sf /usr/lib/ark/carrier /usr/local/bin/apt && \
+    ln -sf /usr/lib/ark/carrier /usr/local/bin/dnf && \
+    ln -sf /usr/lib/ark/carrier /usr/local/bin/yum && \
+    ln -sf /usr/lib/ark/carrier /usr/local/bin/zypper && \
+    ln -sf /usr/lib/ark/carrier /usr/local/bin/apk && \
+    ln -sf /usr/lib/ark/carrier /usr/local/bin/emerge && \
+    ln -sf /usr/lib/ark/carrier /usr/local/bin/xbps-install && \
+    ln -sf /usr/lib/ark/carrier /usr/local/bin/slackpkg && \
+    ln -sf /usr/lib/ark/carrier /usr/local/bin/opkg
 
 # Layer 9: Alga wrapper + desktop entry + D-Bus + update timer
 COPY alga-wrapper.sh /usr/lib/ark/alga-wrapper
