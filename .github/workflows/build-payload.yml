@@ -261,6 +261,14 @@ jobs:
       - name: Push payload image to GHCR
         run: sudo podman push --compression-format zstd:chunked ghcr.io/${{ github.repository }}:${{ matrix.variant }}
 
+      - name: Log in to Quay.io
+        run: echo "${{ secrets.QUAY_PASSWORD }}" | sudo podman login quay.io -u ${{ secrets.QUAY_USERNAME }} --password-stdin
+
+      - name: Push payload image to Quay.io
+        run: |
+          sudo podman tag ghcr.io/${{ github.repository }}:${{ matrix.variant }} quay.io/zamkara/ark:${{ matrix.variant }}
+          sudo podman push --compression-format zstd:chunked quay.io/zamkara/ark:${{ matrix.variant }}
+
   update-cache:
     needs: [check-digest, build-payload]
     if: |
