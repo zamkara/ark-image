@@ -267,7 +267,7 @@ jobs:
       - name: Push payload image to Quay.io
         run: |
           sudo podman tag ghcr.io/${{ github.repository }}:${{ matrix.variant }} quay.io/arklinux/gnome:${{ matrix.variant }}
-          sudo podman push --compression-format zstd:chunked quay.io/zamkara/ark:${{ matrix.variant }}
+          sudo podman push --compression-format zstd:chunked quay.io/arklinux/gnome:${{ matrix.variant }}
 
   update-cache:
     needs: [check-digest, build-payload]
