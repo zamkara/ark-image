@@ -161,6 +161,15 @@ RUN set -e; \
         pacman -Scc --noconfirm; \
     fi
 
+# Layer 12b: ASUS packages (variant-specific)
+RUN set -e; \
+    if [[ "$VARIANT" == *"-asus"* ]]; then \
+        printf '\n[g14]\nSigLevel = Never\nServer = https://arch.asus-linux.org\n' >> /etc/pacman.conf; \
+        pacman -Sy --noconfirm asusctl supergfxctl rog-control-center; \
+        systemctl enable supergfxd; \
+        pacman -Scc --noconfirm; \
+    fi
+
 # Layer 13: mkinitcpio + initramfs cleanup
 RUN set -e; \
     sed -i 's/^MODULES=.*/MODULES=(btrfs vfat ext4 xfs erofs overlay loop)/g' /etc/mkinitcpio.conf && \
@@ -198,4 +207,4 @@ RUN rm -rf \
         /etc/pacman.conf \
         /etc/pacman.d/ \
         /var/lib/pacman/ && \
-    rm -f /usr/share/applications/{bssh,bvnc,avahi-discover,qv4l2,qvidcap,stoken-gui,stoken-gui-small,org.gnome.Extensions,org.gnome.TextEditor,lstopo,hwloc-ls,org.gnome.Logs,ibus,ibus-setup,ibus-wayland,scrcpy,scrcpy-console,veracrypt,timeshift,timeshift-gtk,gnome-system-monitor,org.freedesktop.MalcontentControl,nvtop}.desktop 2>/dev/null || true
+    rm -f /usr/share/applications/{bssh,bvnc,avahi-discover,qv4l2,qvidcap,stoken-gui,stoken-gui-small,org.gnome.Extensions,org.gnome.TextEditor,lstopo,hwloc-ls,org.gnome.Logs,ibus,ibus-setup,ibus-wayland,scrcpy,scrcpy-console,veracrypt,timeshift,timeshift-gtk,org.gnome.SystemMonitor,org.freedesktop.MalcontentControl,nvtop}.desktop 2>/dev/null || true
