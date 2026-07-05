@@ -59,6 +59,22 @@ COPY ark-orundum.conf /usr/lib/tmpfiles.d/ark-orundum.conf
 RUN mkdir -p /orundum /etc/skel/.local/share && \
     ln -sfn /orundum/containers /etc/skel/.local/share/containers
 
+# Layer 6b: Shared writable directories for all users
+COPY ark-share.conf /usr/lib/tmpfiles.d/ark-share.conf
+COPY ark-games.conf /usr/lib/tmpfiles.d/ark-games.conf
+COPY ark-log-user.conf /usr/lib/tmpfiles.d/ark-log-user.conf
+COPY ark-flatpak.conf /usr/lib/tmpfiles.d/ark-flatpak.conf
+COPY ark-containers.conf /usr/lib/tmpfiles.d/ark-containers.conf
+RUN mkdir -p /etc/skel/.local/share && \
+    ln -sfn /var/share/fonts       /etc/skel/.local/share/fonts && \
+    ln -sfn /var/share/icons       /etc/skel/.local/share/icons && \
+    ln -sfn /var/share/themes      /etc/skel/.local/share/themes && \
+    ln -sfn /var/share/backgrounds /etc/skel/.local/share/backgrounds && \
+    ln -sfn /var/share/sounds      /etc/skel/.local/share/sounds && \
+    ln -sfn /var/share/applications /etc/skel/.local/share/applications && \
+    mkdir -p /etc/profile.d && \
+    printf 'export XDG_DATA_DIRS=/var/share:/usr/local/share:/usr/share\n' > /etc/profile.d/ark-share.sh
+
 # Layer 7: Hostname sync
 COPY ark-hostname-sync.sh /usr/lib/ark/ark-hostname-sync
 COPY ark-hostname-sync.service /usr/lib/systemd/system/ark-hostname-sync.service
