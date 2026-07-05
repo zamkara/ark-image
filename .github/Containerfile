@@ -30,11 +30,13 @@ RUN set -e; \
 
 # Layer 1b: Noto fonts (downloaded directly from zamkara/noto-fonts release)
 RUN set -e; \
+    pacman -S --noconfirm jq; \
     ASSET_URL=$(curl -s https://api.github.com/repos/zamkara/noto-fonts/releases/latest \
         | jq -r '[.assets[] | select(.name | startswith("noto-fonts-all"))][0].browser_download_url'); \
     curl -sL "$ASSET_URL" -o /tmp/noto-fonts-all.pkg.tar.zst; \
     pacman -U --noconfirm /tmp/noto-fonts-all.pkg.tar.zst; \
-    rm /tmp/noto-fonts-all.pkg.tar.zst
+    rm /tmp/noto-fonts-all.pkg.tar.zst; \
+    pacman -Scc --noconfirm
 
 # Layer 2: OSTree sysroot + systemd services
 RUN systemctl enable gdm NetworkManager && \
