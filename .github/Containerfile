@@ -137,6 +137,10 @@ RUN --mount=type=bind,source=aur-packages,target=/tmp/aur-packages \
     echo "extra-nix-path = nixpkgs=channel:nixpkgs-unstable" >> /etc/nix/nix.conf; \
     systemctl enable nix-daemon.socket nix-daemon.service || true
 
+# NVIDIA power management config (inert on non-nvidia variants)
+COPY nvidia-pm.conf /etc/modprobe.d/nvidia.conf
+COPY 80-nvidia-pm.rules /usr/lib/udev/rules.d/80-nvidia-pm.rules
+
 # Layer 12: Nvidia (variant-specific, must be before mkinitcpio)
 RUN set -e; \
     if [[ "$VARIANT" == *"-nvidia"* ]]; then \
@@ -162,11 +166,16 @@ RUN set -e; \
     fi
 
 # Layer 12b: ASUS packages (variant-specific)
+# supergfxctl excluded intentionally — deprecated upstream, removed from dependency tree in commit
+# 04e59f7 (2026-06-16). GPU detection + power monitoring moved to asusd natively.
+# For apex-ASUS, packages come from CachyOS (repo configured in Layer 11).
+# For zen-ASUS, packages come from the g14 repo.
 RUN set -e; \
     if [[ "$VARIANT" == *"-asus"* ]]; then \
-        printf '\n[g14]\nSigLevel = Never\nServer = https://arch.asus-linux.org\n' >> /etc/pacman.conf; \
-        pacman -Sy --noconfirm asusctl supergfxctl rog-control-center; \
-        systemctl enable supergfxd; \
+        if [[ "$VARIANT" != *"-apex"* ]]; then \
+            printf '\n[g14]\nSigLevel = Never\nServer = https://arch.asus-linux.org\n' >> /etc/pacman.conf; \
+        fi; \
+        pacman -Sy --noconfirm asusctl rog-control-center; \
         pacman -Scc --noconfirm; \
     fi
 
