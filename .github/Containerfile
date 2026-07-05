@@ -28,16 +28,6 @@ RUN set -e; \
     echo "arklinux" > /etc/hostname; \
     pacman -Scc --noconfirm
 
-# Layer 1b: Noto fonts (downloaded directly from zamkara/noto-fonts release)
-RUN set -e; \
-    ASSET_URL=$(curl -s https://api.github.com/repos/zamkara/noto-fonts/releases/latest \
-        | grep -o '"browser_download_url": "[^"]*noto-fonts-all[^"]*"' \
-        | head -1 | cut -d'"' -f4); \
-    echo "Downloading noto-fonts-all from: $ASSET_URL"; \
-    curl -sL "$ASSET_URL" -o /tmp/noto-fonts-all.pkg.tar.zst; \
-    pacman -U --noconfirm /tmp/noto-fonts-all.pkg.tar.zst; \
-    rm /tmp/noto-fonts-all.pkg.tar.zst
-
 # Layer 2: OSTree sysroot + systemd services
 RUN systemctl enable gdm NetworkManager && \
     systemctl mask systemd-firstboot.service && \
