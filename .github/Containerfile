@@ -65,15 +65,18 @@ COPY ark-games.conf /usr/lib/tmpfiles.d/ark-games.conf
 COPY ark-log-user.conf /usr/lib/tmpfiles.d/ark-log-user.conf
 COPY ark-flatpak.conf /usr/lib/tmpfiles.d/ark-flatpak.conf
 COPY ark-containers.conf /usr/lib/tmpfiles.d/ark-containers.conf
-RUN mkdir -p /etc/skel/.local/share && \
-    ln -sfn /var/share/fonts       /etc/skel/.local/share/fonts && \
-    ln -sfn /var/share/icons       /etc/skel/.local/share/icons && \
-    ln -sfn /var/share/themes      /etc/skel/.local/share/themes && \
-    ln -sfn /var/share/backgrounds /etc/skel/.local/share/backgrounds && \
-    ln -sfn /var/share/sounds      /etc/skel/.local/share/sounds && \
-    ln -sfn /var/share/applications /etc/skel/.local/share/applications && \
+RUN mkdir -p /etc/skel/.local/share/{applications,fonts,icons,themes,backgrounds,sounds} && \
     mkdir -p /etc/profile.d && \
     printf 'export XDG_DATA_DIRS=/var/share:/usr/local/share:/usr/share\n' > /etc/profile.d/ark-share.sh
+
+# Layer 6c: Bind mount /var/share into user home directories
+COPY ark-bindmounts /usr/lib/ark/ark-bindmounts
+COPY ark-bindmounts-pam /usr/lib/ark/ark-bindmounts-pam
+COPY ark-bindmounts.service /usr/lib/systemd/system/ark-bindmounts.service
+RUN chmod +x /usr/lib/ark/ark-bindmounts /usr/lib/ark/ark-bindmounts-pam && \
+    systemctl enable ark-bindmounts.service && \
+    { grep -q 'pam_exec.so.*ark-bindmounts-pam' /etc/pam.d/system-login 2>/dev/null || \
+      echo 'session optional pam_exec.so /usr/lib/ark/ark-bindmounts-pam' >> /etc/pam.d/system-login; }
 
 # Layer 7: Hostname sync
 COPY ark-hostname-sync.sh /usr/lib/ark/ark-hostname-sync

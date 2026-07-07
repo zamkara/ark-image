@@ -1,0 +1,13 @@
+[Unit]
+Description=Ark Linux user directory bind mounts
+After=local-fs.target
+RequiresMountsFor=/var/share
+Before=graphical.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/lib/ark/ark-bindmounts
+
+[Install]
+WantedBy=multi-user.target

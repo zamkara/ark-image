@@ -1,0 +1,17 @@
+#!/bin/bash
+set -euo pipefail
+
+for dir in applications fonts icons themes backgrounds sounds; do
+    source="/var/share/$dir"
+    [ -d "$source" ] || continue
+    for home_base in /home /var/home; do
+        [ -d "$home_base" ] || continue
+        find "$home_base" -maxdepth 1 -mindepth 1 -type d 2>/dev/null | while IFS= read -r home; do
+            target="$home/.local/share/$dir"
+            mountpoint -q "$target" 2>/dev/null && continue
+            [ -L "$target" ] && rm -f "$target"
+            mkdir -p "$target"
+            mount --bind "$source" "$target"
+        done
+    done
+done
