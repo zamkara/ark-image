@@ -14,7 +14,7 @@ RUN set -e; \
     printf '\n[multilib]\nInclude = /etc/pacman.d/mirrorlist\n' >> /etc/pacman.conf; \
     pacman -Syu --noconfirm; \
     pacman -S --noconfirm \
-        base base-devel glibc linux-firmware networkmanager mkinitcpio \
+        base glibc linux-firmware networkmanager mkinitcpio \
         gnome-shell gnome-control-center gnome-keyring gnome-session gnome-settings-daemon \
         nautilus xdg-desktop-portal-gnome xdg-user-dirs-gtk gnome-console gdm gnome-software \
         flatpak gnome-initial-setup \
