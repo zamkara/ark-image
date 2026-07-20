@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Ark Folder Icons
+Comment=Apply MoreWaita icons to home directories
+Exec=/usr/libexec/ark/ark-folder-icons.sh
+OnlyShowIn=GNOME;
+X-GNOME-Autostart-Phase=Initialization
+X-GNOME-Autostart-enabled=true
+NoDisplay=true

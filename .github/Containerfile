@@ -111,6 +111,11 @@ COPY alga-update.timer /usr/lib/systemd/system/alga-update.timer
 RUN chmod +x /usr/lib/ark/alga-wrapper && \
     systemctl enable alga-update.timer
 
+# Layer 9b: MoreWaita folder icons autostart
+COPY ark-folder-icons.sh /usr/libexec/ark/ark-folder-icons.sh
+COPY ark-folder-icons.desktop /etc/xdg/autostart/ark-folder-icons.desktop
+RUN chmod +x /usr/libexec/ark/ark-folder-icons.sh
+
 # Layer 10: /usr/local → /var/usrlocal symlink
 RUN rm -rf /usr/local && ln -sf /var/usrlocal /usr/local
 
