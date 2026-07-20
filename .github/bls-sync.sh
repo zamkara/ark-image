@@ -100,6 +100,18 @@ echo "bls-sync: Known deployments: $(printf '%s' "$deployments" | tr '\n' ' ')"
 
 mkdir -p "$ESP/loader/entries" "$ESP/ostree"
 
+# Detect /boot mount (may differ from ESP when /boot is on btrfs root)
+BOOT_DIR=""
+for candidate in "/boot"; do
+    if mountpoint -q "$candidate" 2>/dev/null; then
+        BOOT_FSTYPE=$(df -T "$candidate" 2>/dev/null | awk 'NR==2{print $2}')
+        if [ "$BOOT_FSTYPE" != "vfat" ]; then
+            BOOT_DIR="$candidate"
+        fi
+        break
+    fi
+done
+
 ROOT_UUID=$(findmnt -n -o UUID "$SYSROOT" 2>/dev/null || blkid -s UUID -o value "$(findmnt -n -o SOURCE "$SYSROOT" 2>/dev/null)" 2>/dev/null || echo "")
 ROOT_SUBVOL=$(findmnt -n -o OPTIONS "$SYSROOT" 2>/dev/null | tr ',' '\n' | grep '^subvol=' | head -1 | sed 's|^subvol=||;s|^/||' || true)
 
@@ -183,7 +195,28 @@ for deploy_id in $deployments; do
     done
     if [ -z "$boot_slot" ]; then
         boot_slot="boot.0"
-        bootlink_dir="$SYSROOT/ostree/boot.0/default/$bootcsum"
+        # Determine the next subversion for boot.0 (boot.0 -> boot.0.N)
+        _boot0_target=$(readlink "$SYSROOT/ostree/boot.0" 2>/dev/null || true)
+        if [ -n "$_boot0_target" ] && [ -d "$SYSROOT/ostree/$_boot0_target" ]; then
+            bootlink_base="$SYSROOT/ostree/$_boot0_target"
+        else
+            # boot.0 is missing or is a plain dir — create proper symlink structure
+            _boot0_ver=0
+            while [ -d "$SYSROOT/ostree/boot.0.$_boot0_ver" ]; do
+                _boot0_ver=$((_boot0_ver + 1))
+            done
+            bootlink_base="$SYSROOT/ostree/boot.0.$_boot0_ver"
+            mkdir -p "$bootlink_base" 2>/dev/null || true
+            # Migrate existing plain-dir boot.0 contents if present
+            if [ -d "$SYSROOT/ostree/boot.0/default" ] && [ ! -L "$SYSROOT/ostree/boot.0" ]; then
+                cp -a "$SYSROOT/ostree/boot.0/default" "$bootlink_base/" 2>/dev/null || true
+                rm -rf "$SYSROOT/ostree/boot.0" 2>/dev/null || true
+            else
+                rm -rf "$SYSROOT/ostree/boot.0" 2>/dev/null || true
+            fi
+            ln -sfn "boot.0.$_boot0_ver" "$SYSROOT/ostree/boot.0" 2>/dev/null || true
+        fi
+        bootlink_dir="$bootlink_base/default/$bootcsum"
         mkdir -p "$bootlink_dir" 2>/dev/null || true
         ln -sfn "../../../deploy/default/deploy/$deploy_id" "$bootlink_dir/$bootserial" 2>/dev/null || true
     fi
@@ -228,6 +261,42 @@ BLSENTRY
         continue
     fi
 
+    # When /boot is on btrfs (not ESP), mirror kernel/initramfs + BLS entry there
+    # so bootc can find a matching entry in /boot/loader/entries/
+    if [ -n "$BOOT_DIR" ]; then
+        boot_ostree="$BOOT_DIR/ostree/$deploy_id"
+        mkdir -p "$boot_ostree"
+        if [ ! -f "$boot_ostree/vmlinuz-$kver" ] || [ "$vmlinuz_src" -nt "$boot_ostree/vmlinuz-$kver" ]; then
+            cp -f "$vmlinuz_dst" "$boot_ostree/vmlinuz-$kver" 2>/dev/null || \
+            cp -f "$vmlinuz_src" "$boot_ostree/vmlinuz-$kver" 2>/dev/null || true
+        fi
+        if [ -f "$initramfs_dst" ]; then
+            if [ ! -f "$boot_ostree/initramfs-$kver.img" ] || [ "$initramfs_dst" -nt "$boot_ostree/initramfs-$kver.img" ]; then
+                cp -f "$initramfs_dst" "$boot_ostree/initramfs-$kver.img" 2>/dev/null || true
+            fi
+        fi
+
+        boot_entry="$BOOT_DIR/loader.0/entries/ostree-$deploy_id.conf"
+        mkdir -p "$BOOT_DIR/loader.0/entries"
+        if ! cat > "$boot_entry" <<BLSENTRY
+## This is a boot loader entry for ostree based on Ark Linux
+title $title
+version $kver
+options $cmdline
+linux /ostree/$deploy_id/vmlinuz-$kver
+initrd /ostree/$deploy_id/initramfs-$kver.img
+BLSENTRY
+        then
+            echo "bls-sync: Failed to write /boot entry for $deploy_id"
+        fi
+
+        # Ensure /boot/loader symlink points to loader.0
+        if [ -L "$BOOT_DIR/loader" ] && [ "$(readlink "$BOOT_DIR/loader")" != "loader.0" ]; then
+            ln -sfn "loader.0" "$BOOT_DIR/loader"
+            echo "bls-sync: Updated /boot/loader symlink → loader.0"
+        fi
+    fi
+
     echo "bls-sync: Generated entry for deployment $deploy_id (kernel $kver)"
 done
 
@@ -261,6 +330,43 @@ timeout 3
 console-mode max
 default @
 LOADER
+fi
+
+# Mirror cleanup to /boot (btrfs) when separate from ESP
+if [ -n "$BOOT_DIR" ] && [ -d "$BOOT_DIR/loader.0/entries" ]; then
+    for entry in "$BOOT_DIR/loader.0/entries/ostree-"*.conf; do
+        [ ! -f "$entry" ] && continue
+        id=$(basename "$entry" .conf | sed 's/^ostree-//')
+        found=0
+        for d in $deployments; do
+            d=$(echo "$d" | tr -d '\n\r ')
+            [ "$id" = "$d" ] && found=1 && break
+        done
+        if [ "$found" = "0" ]; then
+            echo "bls-sync: Removing stale /boot entry $id"
+            rm -f "$entry"
+            rm -rf "$BOOT_DIR/ostree/$id" 2>/dev/null || true
+        fi
+    done
+
+    # Remove auto-generated bootc entries from /boot
+    for entry in "$BOOT_DIR/loader.0/entries/"*.conf; do
+        [ ! -f "$entry" ] && continue
+        if grep -q "title.*ostree:" "$entry" 2>/dev/null; then
+            echo "bls-sync: Removing auto-generated /boot entry $(basename $entry)"
+            rm -f "$entry"
+        fi
+    done
+
+    # Clean up stale /boot loader dirs (loader.1, etc.) with old entries
+    for _old_loader in "$BOOT_DIR"/loader.*/; do
+        [ ! -d "$_old_loader" ] && continue
+        _old_name=$(basename "$_old_loader")
+        [ "$_old_name" = "loader.0" ] && continue
+        [ -f "$_old_loader/loader.conf" ] && continue
+        echo "bls-sync: Removing stale /boot/$_old_name"
+        rm -rf "$_old_loader" 2>/dev/null || true
+    done
 fi
 
 mount -o remount,ro "$SYSROOT" 2>/dev/null || true
