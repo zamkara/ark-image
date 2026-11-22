@@ -11,7 +11,7 @@ local_packages=()
 for archive in "${archives[@]}"; do
     read -r name version < <(/usr/bin/pacman -Qp "$archive")
     case "$name" in
-        *-debug|linux-headers|linux-zen-headers|linux-lts-headers|linux-hardened-headers) continue ;;
+        *-debug|linux-headers|linux-zen-headers|linux-lts-headers|linux-hardened-headers|zfs-dkms|zfs-utils) continue ;;
     esac
     if /usr/bin/pacman -Si "$name" >/dev/null 2>&1; then
         official+=("$name")
