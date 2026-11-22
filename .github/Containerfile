@@ -151,6 +151,10 @@ RUN --mount=type=bind,source=aur-packages,target=/tmp/aur-packages \
         pacman-key --populate cachyos; \
         sed -i '/SigLevel = Never/d' /etc/pacman.conf; \
         pacman -Sy --noconfirm; \
+        PAHOLE_VERSION=$(pacman -Si pahole | awk '/^Version/ {print $3; exit}'); \
+        if [[ $(vercmp "$PAHOLE_VERSION" '1:1.32-2') -lt 0 ]]; then \
+            pacman -U --noconfirm 'https://mirror.cachyos.org/repo/x86_64/cachyos/pahole-1:1.32-2-x86_64.pkg.tar.zst'; \
+        fi; \
         pacman -Syu --noconfirm $CACHY_KERNEL ${CACHY_KERNEL}-headers; \
     else \
         if [[ "$VARIANT" == *"-zen"* ]]; then KERNEL="linux-zen"; fi; \
